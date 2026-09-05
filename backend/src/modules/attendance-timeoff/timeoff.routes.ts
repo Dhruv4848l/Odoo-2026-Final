@@ -202,10 +202,18 @@ router.post('/requests', authMiddleware, (req: AuthenticatedRequest, res: Respon
     });
   }
 
+  if (new Date(end_date).getTime() < new Date(start_date).getTime()) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_DATE_RANGE', message: 'End date cannot be earlier than start date.' },
+    });
+  }
+
   const type = ((memoryDb as any).time_off_types || []).find((t: any) => String(t.id) === String(time_off_type_id));
   if (!type) {
     return res.status(404).json({ success: false, error: { message: 'Time off type not found.' } });
   }
+
 
   // -------------------------------------------------------------------
   // VALIDATION 1: Insufficient Leave Balance check (if allocation required)
@@ -294,7 +302,7 @@ router.post('/requests/:id/approve', authMiddleware, requireRole(['admin', 'hr_m
   // Deduct from allocation if required and not already approved
   if (request.status !== 'Approved' && type?.requires_allocation) {
     const allocations = (memoryDb as any).time_off_allocations || [];
-    const targetAlloc = allocations.find(
+    let targetAlloc = allocations.find(
       (a: any) =>
         String(a.employee_id) === String(request.employee_id) &&
         String(a.time_off_type_id) === String(request.time_off_type_id) &&
@@ -302,9 +310,18 @@ router.post('/requests/:id/approve', authMiddleware, requireRole(['admin', 'hr_m
         a.valid_until >= request.end_date
     );
 
+    if (!targetAlloc) {
+      targetAlloc = allocations.find(
+        (a: any) =>
+          String(a.employee_id) === String(request.employee_id) &&
+          String(a.time_off_type_id) === String(request.time_off_type_id)
+      );
+    }
+
     if (targetAlloc) {
       targetAlloc.taken = Number(targetAlloc.taken || 0) + Number(request.requested_amount);
     }
+
   }
 
   list[index] = {

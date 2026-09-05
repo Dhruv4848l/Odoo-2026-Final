@@ -102,7 +102,29 @@ export const memoryDb = {
       role_id: 'admin',
       employee_id: 'emp_admin',
     },
+    {
+      id: 'usr_hrmgr',
+      email: 'hr.manager@peoplepay360.com',
+      password: 'password123',
+      role_id: 'hr_manager',
+      employee_id: null,
+    },
+    {
+      id: 'usr_payroll',
+      email: 'payroll@peoplepay360.com',
+      password: 'password123',
+      role_id: 'hr_payroll_manager',
+      employee_id: null,
+    },
+    {
+      id: 'usr_amara',
+      email: 'amara.chen@peoplepay360.com',
+      password: 'password123',
+      role_id: 'employee',
+      employee_id: 'emp_amara',
+    },
   ],
+
   time_off_types: [
     {
       id: 'tot_paid',

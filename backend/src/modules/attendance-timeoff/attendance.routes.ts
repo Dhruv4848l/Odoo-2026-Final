@@ -99,17 +99,25 @@ router.post('/check-in', authMiddleware, (req: AuthenticatedRequest, res: Respon
     return res.status(400).json({ success: false, error: { code: 'MISSING_EMPLOYEE', message: 'Employee ID is required.' } });
   }
 
-  // Verify no open check-in exists
-  const existingActive = ((memoryDb as any).attendances || []).find(
-    (a: any) => String(a.employee_id) === String(employee_id) && !a.check_out
-  );
+  // Verify no open check-in session exists for TODAY
+  const now = new Date();
+  const existingActive = ((memoryDb as any).attendances || []).find((a: any) => {
+    if (String(a.employee_id) !== String(employee_id) || a.check_out) return false;
+    const checkInDate = new Date(a.check_in);
+    const isToday =
+      checkInDate.getUTCFullYear() === now.getUTCFullYear() &&
+      checkInDate.getUTCMonth() === now.getUTCMonth() &&
+      checkInDate.getUTCDate() === now.getUTCDate();
+    return isToday;
+  });
 
   if (existingActive) {
     return res.status(400).json({
       success: false,
-      error: { code: 'ALREADY_CHECKED_IN', message: 'Employee is already checked in. Please check out first.' },
+      error: { code: 'ALREADY_CHECKED_IN', message: 'Employee is already checked in for today. Please check out first.' },
     });
   }
+
 
   const newAttendance = {
     id: `att_${Date.now()}`,
