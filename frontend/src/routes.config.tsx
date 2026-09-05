@@ -8,8 +8,11 @@ import { EmployeeKanbanPage } from './features/auth-employee/pages/EmployeeKanba
 import { EmployeeFormPage } from './features/auth-employee/pages/EmployeeFormPage';
 import { ContractListPage } from './features/auth-employee/pages/ContractListPage';
 import { SchedulePage } from './features/auth-employee/pages/SchedulePage';
+import { AttendanceListPage } from './features/attendance-timeoff/pages/AttendanceListPage';
+import { TimeOffOverviewPage } from './features/attendance-timeoff/pages/TimeOffOverviewPage';
 import { PlaceholderModulePage } from './features/placeholder/PlaceholderModulePage';
 import { LandingPage } from './features/landing/pages/LandingPage';
+
 
 // Protected Layout Shell
 const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -67,17 +70,12 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Dev B Module Placeholder */}
+      {/* Dev B Modules */}
       <Route
         path="/attendance"
         element={
           <ProtectedLayout>
-            <PlaceholderModulePage
-              title="Attendance Management"
-              squad="Dev B — Time & Presence Squad"
-              description="Check-in/out widget, attendance logs & missing checkout flags"
-              icon="attendance"
-            />
+            <AttendanceListPage />
           </ProtectedLayout>
         }
       />
@@ -85,15 +83,11 @@ export const AppRoutes: React.FC = () => {
         path="/timeoff"
         element={
           <ProtectedLayout>
-            <PlaceholderModulePage
-              title="Time Off & Allocations"
-              squad="Dev B — Time & Presence Squad"
-              description="Leave requests, balance tracking & approval workflows"
-              icon="timeoff"
-            />
+            <TimeOffOverviewPage />
           </ProtectedLayout>
         }
       />
+
 
       {/* Dev C Module Placeholder */}
       <Route
