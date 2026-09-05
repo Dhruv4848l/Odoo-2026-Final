@@ -11,19 +11,12 @@ export interface PayrunWizardModalProps {
   structures: SalaryStructure[];
   onSubmit: (data: {
     name: string;
-    structure_id: number;
+    structure_id: string;
     period_start: string;
     period_end: string;
-    selected_employee_ids: number[];
+    selected_employee_ids?: string[];
   }) => void;
 }
-
-const FALLBACK_EMPLOYEES = [
-  { id: 1, name: 'Amara Chen', department: 'Sales & Retail', position: 'Store Supervisor', contractWage: 5200 },
-  { id: 2, name: 'Bhavna Patel', department: 'Human Resources', position: 'HR Specialist', contractWage: 4200 },
-  { id: 3, name: 'David Vance', department: 'Engineering', position: 'Software Engineer', contractWage: 6500 },
-  { id: 4, name: 'Elena Rostova', department: 'Finance', position: 'Accountant', contractWage: 4800 },
-];
 
 export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
   isOpen,
@@ -33,14 +26,14 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState<string>('October 2026 Regular Payrun');
-  const [structureId, setStructureId] = useState<number>(structures[0]?.id || 1);
+  const [structureId, setStructureId] = useState<string>(structures[0]?.id || 'struct_1');
   const [periodStart, setPeriodStart] = useState<string>('2026-10-01');
   const [periodEnd, setPeriodEnd] = useState<string>('2026-10-31');
-  const [employees, setEmployees] = useState<any[]>(FALLBACK_EMPLOYEES);
-  const [selectedIds, setSelectedIds] = useState<number[]>([1, 2, 3, 4]);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (structures.length > 0 && (!structureId || structureId === 1)) {
+    if (structures.length > 0 && (!structureId || structureId === 'struct_1')) {
       setStructureId(structures[0].id);
     }
   }, [structures]);
@@ -59,22 +52,22 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
       });
       const data = await res.json();
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        const mapped = data.data.map((e: any, idx: number) => ({
-          id: idx + 1,
+        const mapped = data.data.map((e: any) => ({
+          id: e.id,
           name: `${e.first_name} ${e.last_name}`,
-          department: e.department?.name || 'General',
+          department: e.department_name || 'General',
           position: e.job_position || 'Staff',
-          contractWage: 4500 + idx * 500,
+          contractWage: 4500,
         }));
         setEmployees(mapped);
         setSelectedIds(mapped.map((m: any) => m.id));
       }
     } catch (err) {
-      console.warn('Failed to fetch dynamic employees for Payrun wizard, using default fallback.', err);
+      console.warn('Failed to fetch dynamic employees for Payrun wizard.', err);
     }
   };
 
-  const toggleSelectEmployee = (id: number) => {
+  const toggleSelectEmployee = (id: string) => {
     if (selectedIds.includes(id)) {
       setSelectedIds(selectedIds.filter((item) => item !== id));
     } else {
@@ -97,7 +90,7 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
   const handleFinish = () => {
     onSubmit({
       name,
-      structure_id: Number(structureId),
+      structure_id: structureId,
       period_start: periodStart,
       period_end: periodEnd,
       selected_employee_ids: selectedIds,
@@ -140,7 +133,7 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
           <Select
             label="Salary Structure"
             value={structureId}
-            onChange={(e) => setStructureId(Number(e.target.value))}
+            onChange={(e) => setStructureId(e.target.value)}
             options={structures.map((s) => ({ value: s.id, label: s.name }))}
           />
           <div className="grid grid-cols-2 gap-4">
@@ -191,7 +184,6 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
                 </div>
                 <div className="flex items-center gap-3">
                   <Badge variant="neutral" showDot={false}>{emp.department}</Badge>
-                  <span className="font-mono text-xs font-semibold text-[#14141F]">${emp.contractWage}</span>
                 </div>
               </label>
             ))}

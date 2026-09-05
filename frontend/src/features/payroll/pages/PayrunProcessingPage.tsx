@@ -30,12 +30,11 @@ export const PayrunProcessingPage: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      const numId = Number(id);
-      loadPayrunData(numId);
+      loadPayrunData(id);
     }
   }, [id]);
 
-  const loadPayrunData = async (payrunId: number) => {
+  const loadPayrunData = async (payrunId: string) => {
     setLoading(true);
     try {
       const [pData, psData] = await Promise.all([
@@ -173,7 +172,7 @@ export const PayrunProcessingPage: React.FC = () => {
             </Button>
           )}
           {payrun?.status === 'Paid' && canEdit && (
-            <Button variant="outline" className="gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50" onClick={handleSendPayslips}>
+            <Button variant="secondary" className="gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50" onClick={handleSendPayslips}>
               <Send className="w-4 h-4" /> Disburse Payslips (Email)
             </Button>
           )}

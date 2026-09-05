@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
-import { SalaryStructureService } from './services/salary-structure.service';
-import { PayrunService } from './services/payrun.service';
-import { PayslipService } from './services/payslip.service';
-import { PdfGeneratorService } from './services/pdf-generator.service';
+import { SalaryStructureService } from './services/salary-structure.service.js';
+import { PayrunService } from './services/payrun.service.js';
+import { PayslipService } from './services/payslip.service.js';
+import { PdfGeneratorService } from './services/pdf-generator.service.js';
+import { AuthenticatedRequest } from '../../core/auth.js';
 
 export class PayrollController {
   // Salary Structures & Rules
@@ -17,7 +18,7 @@ export class PayrollController {
 
   static async getStructureById(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = String(req.params.id);
       const structure = await SalaryStructureService.getStructureById(id);
       if (!structure) {
         return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Structure not found' } });
@@ -30,8 +31,11 @@ export class PayrollController {
 
   static async createStructure(req: Request, res: Response) {
     try {
-      const { name } = req.body;
-      const structure = await SalaryStructureService.createStructure(name);
+      const { name, code, description } = req.body;
+      if (!name) {
+        return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'Structure name is required.' } });
+      }
+      const structure = await SalaryStructureService.createStructure(name, code, description);
       res.status(201).json({ success: true, data: structure });
     } catch (err: any) {
       res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
@@ -40,6 +44,10 @@ export class PayrollController {
 
   static async addSalaryRule(req: Request, res: Response) {
     try {
+      const { structure_id, name, code } = req.body;
+      if (!structure_id || !name || !code) {
+        return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'Structure ID, rule name, and code are required.' } });
+      }
       const rule = await SalaryStructureService.addSalaryRule(req.body);
       res.status(201).json({ success: true, data: rule });
     } catch (err: any) {
@@ -49,7 +57,7 @@ export class PayrollController {
 
   static async updateSalaryRule(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = String(req.params.id);
       const rule = await SalaryStructureService.updateSalaryRule(id, req.body);
       res.json({ success: true, data: rule });
     } catch (err: any) {
@@ -69,7 +77,7 @@ export class PayrollController {
 
   static async getPayrunById(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = String(req.params.id);
       const payrun = await PayrunService.getPayrunById(id);
       if (!payrun) {
         return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Payrun not found' } });
@@ -83,12 +91,18 @@ export class PayrollController {
   static async createPayrun(req: Request, res: Response) {
     try {
       const { name, structure_id, period_start, period_end, selected_employee_ids } = req.body;
+      if (!name || !structure_id || !period_start || !period_end) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'MISSING_FIELDS', message: 'Name, structure ID, period_start, and period_end are required.' }
+        });
+      }
       const payrun = await PayrunService.createPayrun(
         name,
         structure_id,
         period_start,
         period_end,
-        selected_employee_ids || [1, 2, 3]
+        selected_employee_ids
       );
       res.status(201).json({ success: true, data: payrun });
     } catch (err: any) {
@@ -98,7 +112,7 @@ export class PayrollController {
 
   static async validatePayrun(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = String(req.params.id);
       const payrun = await PayrunService.updatePayrunStatus(id, 'Validated');
       res.json({ success: true, data: payrun });
     } catch (err: any) {
@@ -108,7 +122,7 @@ export class PayrollController {
 
   static async markPaidPayrun(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = String(req.params.id);
       const payrun = await PayrunService.updatePayrunStatus(id, 'Paid');
       res.json({ success: true, data: payrun });
     } catch (err: any) {
@@ -118,7 +132,7 @@ export class PayrollController {
 
   static async sendPayslips(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = String(req.params.id);
       const result = await PayslipService.sendBulkPayslipEmails(id);
       res.json({ success: true, data: result });
     } catch (err: any) {
@@ -129,7 +143,7 @@ export class PayrollController {
   // Payslips
   static async getPayslipById(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = String(req.params.id);
       const payslip = await PayslipService.getPayslipById(id);
       if (!payslip) {
         return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Payslip not found' } });
@@ -140,9 +154,22 @@ export class PayrollController {
     }
   }
 
+  static async getMyPayslips(req: AuthenticatedRequest, res: Response) {
+    try {
+      const empId = req.user?.employeeId;
+      if (!empId) {
+        return res.json({ success: true, data: [] });
+      }
+      const payslips = await PayslipService.getPayslipsByEmployeeId(String(empId));
+      res.json({ success: true, data: payslips });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+    }
+  }
+
   static async getPayslipsByPayrun(req: Request, res: Response) {
     try {
-      const payrunId = parseInt(req.params.payrunId);
+      const payrunId = String(req.params.payrunId);
       const payslips = await PayslipService.getPayslipsByPayrunId(payrunId);
       res.json({ success: true, data: payslips });
     } catch (err: any) {
@@ -152,7 +179,7 @@ export class PayrollController {
 
   static async downloadPayslipPdf(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = String(req.params.id);
       const payslip = await PayslipService.getPayslipById(id);
       if (!payslip) {
         return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Payslip not found' } });

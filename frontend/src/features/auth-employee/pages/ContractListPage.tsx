@@ -15,6 +15,7 @@ export const ContractListPage: React.FC = () => {
 
   const [contracts, setContracts] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [structures, setStructures] = useState<any[]>([]);
   const [searchParams] = useSearchParams();
   const empIdFilter = searchParams.get('employee_id') || '';
 
@@ -27,6 +28,7 @@ export const ContractListPage: React.FC = () => {
     employee_id: empIdFilter,
     job_position: '',
     wage: 4500,
+    salary_structure_id: 'struct_1',
     start_date: new Date().toISOString().split('T')[0],
     end_date: '',
     notes: '',
@@ -46,10 +48,14 @@ export const ContractListPage: React.FC = () => {
     }
   };
 
-  const fetchEmployees = async () => {
+  const fetchEmployeesAndStructures = async () => {
     try {
-      const res = await apiRequest('/employees');
-      setEmployees(res.data);
+      const [empRes, structRes] = await Promise.all([
+        apiRequest('/employees'),
+        apiRequest('/payroll/structures').catch(() => ({ data: [] })),
+      ]);
+      setEmployees(empRes.data || []);
+      setStructures(structRes.data || []);
     } catch (err) {
       console.error(err);
     }
@@ -57,7 +63,7 @@ export const ContractListPage: React.FC = () => {
 
   useEffect(() => {
     fetchContracts();
-    fetchEmployees();
+    fetchEmployeesAndStructures();
   }, [selectedEmp]);
 
   const handleCreateContract = async (e: React.FormEvent) => {
@@ -204,6 +210,22 @@ export const ContractListPage: React.FC = () => {
                 value={formData.wage}
                 onChange={(e) => setFormData({ ...formData, wage: Number(e.target.value) })}
                 required
+              />
+
+              <Select
+                label="Salary Structure *"
+                value={formData.salary_structure_id}
+                onChange={(e) => setFormData({ ...formData, salary_structure_id: e.target.value })}
+                required
+                options={
+                  structures.length > 0
+                    ? structures.map((s) => ({ value: s.id, label: s.name }))
+                    : [
+                        { value: 'struct_1', label: 'Standard Monthly Salary' },
+                        { value: 'struct_2', label: 'Executive & Management Structure' },
+                        { value: 'struct_3', label: 'Sales & Performance Structure' },
+                      ]
+                }
               />
 
               <div className="grid grid-cols-2 gap-4">

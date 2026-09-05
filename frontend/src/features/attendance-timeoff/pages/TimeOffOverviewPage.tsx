@@ -21,6 +21,7 @@ export const TimeOffOverviewPage: React.FC = () => {
   const [requestModalOpen, setRequestModalOpen] = useState<boolean>(false);
   const [typesModalOpen, setTypesModalOpen] = useState<boolean>(false);
   const [allocModalOpen, setAllocModalOpen] = useState<boolean>(false);
+  const [selectedAlloc, setSelectedAlloc] = useState<any>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -119,7 +120,10 @@ export const TimeOffOverviewPage: React.FC = () => {
                 <span>New Leave Type</span>
               </button>
               <button
-                onClick={() => setAllocModalOpen(true)}
+                onClick={() => {
+                  setSelectedAlloc(null);
+                  setAllocModalOpen(true);
+                }}
                 className="h-10 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-slate font-semibold text-xs rounded-full shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Award className="w-3.5 h-3.5" />
@@ -324,9 +328,22 @@ export const TimeOffOverviewPage: React.FC = () => {
                     />
                     <h3 className="font-bold text-sm text-ink">{alloc.time_off_type?.name || 'Leave Type'}</h3>
                   </div>
-                  <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
-                    {alloc.time_off_type?.unit || 'Days'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                      {alloc.time_off_type?.unit || 'Days'}
+                    </span>
+                    {isHR && (
+                      <button
+                        onClick={() => {
+                          setSelectedAlloc(alloc);
+                          setAllocModalOpen(true);
+                        }}
+                        className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {isHR && alloc.employee && (
@@ -422,10 +439,14 @@ export const TimeOffOverviewPage: React.FC = () => {
 
       <TimeOffAllocationsModal
         isOpen={allocModalOpen}
-        onClose={() => setAllocModalOpen(false)}
+        onClose={() => {
+          setAllocModalOpen(false);
+          setSelectedAlloc(null);
+        }}
         onSuccess={fetchData}
         employees={employees}
         leaveTypes={types}
+        initialAllocation={selectedAlloc}
       />
     </div>
   );

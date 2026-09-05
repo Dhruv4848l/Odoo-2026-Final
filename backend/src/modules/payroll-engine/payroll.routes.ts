@@ -1,33 +1,39 @@
 import { Router } from 'express';
-import { PayrollController } from './payroll.controller';
-import { authenticateToken, requireRoles } from '../../core/auth';
+import { PayrollController } from './payroll.controller.js';
+import { authMiddleware, requireRole } from '../../core/auth.js';
 
 const router = Router();
 
 // Apply auth token middleware to all payroll routes
-router.use(authenticateToken);
+router.use(authMiddleware);
 
-// RBAC enforcement: HR Manager is blocked from payroll screens/routes per spec Section 2
-const payrollRoles = ['HR Payroll User', 'HR Payroll Manager', 'Admin'];
+// RBAC Roles Definitions:
+// admin, hr_payroll_manager: full access (create/edit rules, create/process payruns)
+// hr_payroll_user: view structures, create/process payruns, view payslips (read-only rules)
+// employee: view own payslips only
+const payrollViewRoles = ['admin', 'hr_payroll_manager', 'hr_payroll_user'];
+const payrollManagerRoles = ['admin', 'hr_payroll_manager'];
+const payrunOperateRoles = ['admin', 'hr_payroll_manager', 'hr_payroll_user'];
 
-// Structures & Rules
-router.get('/structures', requireRoles(payrollRoles), PayrollController.getStructures);
-router.get('/structures/:id', requireRoles(payrollRoles), PayrollController.getStructureById);
-router.post('/structures', requireRoles(['HR Payroll Manager', 'Admin']), PayrollController.createStructure);
-router.post('/rules', requireRoles(['HR Payroll Manager', 'Admin']), PayrollController.addSalaryRule);
-router.put('/rules/:id', requireRoles(['HR Payroll Manager', 'Admin']), PayrollController.updateSalaryRule);
+// Salary Structures & Rules
+router.get('/structures', requireRole(payrollViewRoles), PayrollController.getStructures);
+router.get('/structures/:id', requireRole(payrollViewRoles), PayrollController.getStructureById);
+router.post('/structures', requireRole(payrollManagerRoles), PayrollController.createStructure);
+router.post('/rules', requireRole(payrollManagerRoles), PayrollController.addSalaryRule);
+router.put('/rules/:id', requireRole(payrollManagerRoles), PayrollController.updateSalaryRule);
 
 // Payruns
-router.get('/payruns', requireRoles(payrollRoles), PayrollController.getPayruns);
-router.get('/payruns/:id', requireRoles(payrollRoles), PayrollController.getPayrunById);
-router.post('/payruns', requireRoles(['HR Payroll Manager', 'Admin']), PayrollController.createPayrun);
-router.post('/payruns/:id/validate', requireRoles(['HR Payroll Manager', 'Admin']), PayrollController.validatePayrun);
-router.post('/payruns/:id/mark-paid', requireRoles(['HR Payroll Manager', 'Admin']), PayrollController.markPaidPayrun);
-router.post('/payruns/:id/send-payslips', requireRoles(['HR Payroll Manager', 'Admin']), PayrollController.sendPayslips);
+router.get('/payruns', requireRole(payrollViewRoles), PayrollController.getPayruns);
+router.get('/payruns/:id', requireRole(payrollViewRoles), PayrollController.getPayrunById);
+router.post('/payruns', requireRole(payrunOperateRoles), PayrollController.createPayrun);
+router.post('/payruns/:id/validate', requireRole(payrunOperateRoles), PayrollController.validatePayrun);
+router.post('/payruns/:id/mark-paid', requireRole(payrunOperateRoles), PayrollController.markPaidPayrun);
+router.post('/payruns/:id/send-payslips', requireRole(payrunOperateRoles), PayrollController.sendPayslips);
 
 // Payslips
-router.get('/payslips/:id', requireRoles(payrollRoles), PayrollController.getPayslipById);
-router.get('/payslips/:id/pdf', requireRoles(payrollRoles), PayrollController.downloadPayslipPdf);
-router.get('/payruns/:payrunId/payslips', requireRoles(payrollRoles), PayrollController.getPayslipsByPayrun);
+router.get('/payslips/my', PayrollController.getMyPayslips);
+router.get('/payslips/:id', PayrollController.getPayslipById);
+router.get('/payslips/:id/pdf', PayrollController.downloadPayslipPdf);
+router.get('/payruns/:payrunId/payslips', requireRole(payrollViewRoles), PayrollController.getPayslipsByPayrun);
 
 export default router;

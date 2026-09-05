@@ -8,10 +8,13 @@ import { apiRequest } from '../../../lib/api';
 import { LayoutGrid, List, Plus, Search, Mail, Phone, Building2 } from 'lucide-react';
 
 import { useAuth } from '../../../context/AuthContext';
+import { getNormalizedRole } from '../../../layouts/SubNav';
 
 export const EmployeeKanbanPage: React.FC = () => {
   const { user } = useAuth();
-  const isEmployeeRole = user?.role?.id === 'employee';
+  const normalizedRole = getNormalizedRole(user);
+  const isEmployeeRole = normalizedRole === 'employee';
+
 
   const [employees, setEmployees] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);

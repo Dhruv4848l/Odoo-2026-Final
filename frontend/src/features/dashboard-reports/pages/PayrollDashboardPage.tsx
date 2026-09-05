@@ -505,7 +505,7 @@ export const PayrollDashboardPage: React.FC = () => {
                   <span>{alert.message}</span>
                 </div>
                 {alert.type === 'MISSING_CHECKOUT' && (
-                  <Button variant="outline" size="sm" onClick={() => navigate('/attendance')} className="bg-white">
+                  <Button variant="secondary" size="sm" onClick={() => navigate('/attendance')} className="bg-white">
                     Resolve Now
                   </Button>
                 )}

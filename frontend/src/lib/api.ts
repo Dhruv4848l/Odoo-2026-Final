@@ -1,7 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('pp360_token');
+  const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),

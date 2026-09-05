@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, ChevronRight } from 'lucide-react';
+import { useNavigate, NavLink } from 'react-router-dom';
+import { Plus, ChevronRight, DollarSign, Sliders } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
@@ -20,6 +20,7 @@ export const PayrunsListPage: React.FC = () => {
   const [payruns, setPayruns] = useState<Payrun[]>([]);
   const [structures, setStructures] = useState<SalaryStructure[]>([]);
   const [isWizardOpen, setIsWizardOpen] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { user } = useAuth();
   const normalizedRole = getNormalizedRole(user);
   const canCreate = ['admin', 'hr_payroll_manager'].includes(normalizedRole);
@@ -36,24 +37,26 @@ export const PayrunsListPage: React.FC = () => {
       ]);
       setPayruns(pData || []);
       setStructures(sData || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading payruns:', err);
     }
   };
 
   const handleCreatePayrun = async (data: {
     name: string;
-    structure_id: number;
+    structure_id: string;
     period_start: string;
     period_end: string;
-    selected_employee_ids: number[];
+    selected_employee_ids?: string[];
   }) => {
+    setErrorMessage(null);
     try {
       const created = await PayrollApiClient.createPayrun(data);
       setPayruns((prev) => [created, ...prev]);
       navigate(`/payroll/payruns/${created.id}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating payrun:', err);
+      setErrorMessage(err.message || 'Failed to create payrun batch. Please try again.');
     }
   };
 
@@ -111,6 +114,38 @@ export const PayrunsListPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Top Module Sub-Navigation Bar */}
+      <div className="flex items-center gap-2 border-b border-[#E5E7EB] pb-3">
+        <NavLink
+          to="/payroll"
+          end
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+              isActive
+                ? 'bg-[#5B4FE9] text-white shadow-sm'
+                : 'bg-white border border-[#E5E7EB] text-[#6B7280] hover:bg-slate-50'
+            }`
+          }
+        >
+          <DollarSign className="w-4 h-4" />
+          <span>Payruns & Batches</span>
+        </NavLink>
+
+        <NavLink
+          to="/payroll/structures"
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+              isActive
+                ? 'bg-[#5B4FE9] text-white shadow-sm'
+                : 'bg-white border border-[#E5E7EB] text-[#6B7280] hover:bg-slate-50'
+            }`
+          }
+        >
+          <Sliders className="w-4 h-4" />
+          <span>Salary Structures & Rules</span>
+        </NavLink>
+      </div>
+
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -124,6 +159,13 @@ export const PayrunsListPage: React.FC = () => {
           </Button>
         )}
       </div>
+
+      {errorMessage && (
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center justify-between font-semibold">
+          <span>{errorMessage}</span>
+          <button onClick={() => setErrorMessage(null)} className="text-red-700 font-bold ml-2">×</button>
+        </div>
+      )}
 
       {/* Payruns List Table */}
       <Card title="Active & Historical Payruns">

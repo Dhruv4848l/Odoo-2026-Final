@@ -1,6 +1,6 @@
 export interface SalaryRule {
-  id: number;
-  structure_id?: number;
+  id: string;
+  structure_id?: string;
   code: string;
   name: string;
   category: 'BASIC' | 'ALLOWANCE' | 'DEDUCTION' | 'GROSS' | 'NET';
@@ -13,22 +13,24 @@ export interface SalaryRule {
 }
 
 export interface SalaryStructure {
-  id: number;
+  id: string;
   name: string;
+  code?: string;
+  description?: string;
   rules?: SalaryRule[];
 }
 
 export interface PayrunWarning {
-  employee_id: number;
+  employee_id: string;
   employee_name: string;
   type: string;
   message: string;
 }
 
 export interface Payrun {
-  id: number;
+  id: string;
   name: string;
-  structure_id: number;
+  structure_id: string;
   structure_name?: string;
   period_start: string;
   period_end: string;
@@ -41,7 +43,7 @@ export interface Payrun {
 }
 
 export interface PayslipLine {
-  rule_id: number;
+  rule_id: string;
   code: string;
   name: string;
   category: string;
@@ -50,12 +52,12 @@ export interface PayslipLine {
 }
 
 export interface PayslipDetail {
-  id: number;
-  payrun_id: number;
+  id: string;
+  payrun_id: string;
   payrun_name: string;
   period_start: string;
   period_end: string;
-  employee_id: number;
+  employee_id: string;
   employee_name: string;
   department_name: string;
   job_position: string;
@@ -67,114 +69,63 @@ export interface PayslipDetail {
   lines: PayslipLine[];
 }
 
-// Fallback Mock Data for standalone frontend testing
+// Fallback Mock Data for standalone offline testing
 const MOCK_STRUCTURES: SalaryStructure[] = [
   {
-    id: 1,
+    id: 'struct_1',
     name: 'Standard Monthly Salary',
+    code: 'STD_MONTHLY',
+    description: 'Default structure for full-time regular employees',
     rules: [
-      { id: 101, code: 'BASIC', name: 'Basic Wage', category: 'BASIC', sequence: 10, computation_method: 'Fixed', amount: 4500 },
-      { id: 102, code: 'HRA', name: 'House Rent Allowance', category: 'ALLOWANCE', sequence: 20, computation_method: 'Percentage', amount: 40 },
-      { id: 103, code: 'TA', name: 'Transport Allowance', category: 'ALLOWANCE', sequence: 30, computation_method: 'Fixed', amount: 300 },
-      { id: 104, code: 'SUP_ALW', name: 'Supervisor Allowance', category: 'ALLOWANCE', sequence: 40, computation_method: 'Fixed', amount: 500, condition_expression: "job_position == 'Store Supervisor'" },
-      { id: 105, code: 'PF', name: 'Provident Fund (Capped)', category: 'DEDUCTION', sequence: 50, computation_method: 'Percentage', amount: 12, cap_amount: 1800 },
-      { id: 106, code: 'TAX', name: 'Income Tax', category: 'DEDUCTION', sequence: 60, computation_method: 'Percentage', amount: 10 },
+      { id: 'rule_101', code: 'BASIC', name: 'Basic Wage', category: 'BASIC', sequence: 10, computation_method: 'Fixed', amount: 4500 },
+      { id: 'rule_102', code: 'HRA', name: 'House Rent Allowance', category: 'ALLOWANCE', sequence: 20, computation_method: 'Percentage', amount: 40 },
+      { id: 'rule_103', code: 'TA', name: 'Transport Allowance', category: 'ALLOWANCE', sequence: 30, computation_method: 'Fixed', amount: 300 },
+      { id: 'rule_104', code: 'PF', name: 'Provident Fund', category: 'DEDUCTION', sequence: 50, computation_method: 'Percentage', amount: 12 },
+      { id: 'rule_105', code: 'TAX', name: 'Income Tax', category: 'DEDUCTION', sequence: 60, computation_method: 'Percentage', amount: 10 },
     ],
   },
   {
-    id: 2,
-    name: 'Executive Leadership Structure',
+    id: 'struct_2',
+    name: 'Executive & Management Structure',
+    code: 'EXEC_MGMT',
+    description: 'Structure with high performance and supervisor allowances',
     rules: [
-      { id: 201, code: 'BASIC', name: 'Executive Base', category: 'BASIC', sequence: 10, computation_method: 'Fixed', amount: 9000 },
-      { id: 202, code: 'EXEC_ALW', name: 'Executive Allowance', category: 'ALLOWANCE', sequence: 20, computation_method: 'Percentage', amount: 25 },
-      { id: 203, code: 'TAX', name: 'Income Tax', category: 'DEDUCTION', sequence: 30, computation_method: 'Percentage', amount: 20 },
+      { id: 'rule_201', code: 'BASIC', name: 'Basic Wage', category: 'BASIC', sequence: 10, computation_method: 'Fixed', amount: 8500 },
+      { id: 'rule_202', code: 'HRA', name: 'Executive HRA', category: 'ALLOWANCE', sequence: 20, computation_method: 'Percentage', amount: 40 },
+      { id: 'rule_203', code: 'SUP_ALW', name: 'Executive Supervisor Allowance', category: 'ALLOWANCE', sequence: 30, computation_method: 'Fixed', amount: 800 },
+      { id: 'rule_204', code: 'TA', name: 'Executive Transport Allowance', category: 'ALLOWANCE', sequence: 40, computation_method: 'Fixed', amount: 500 },
+      { id: 'rule_205', code: 'PF', name: 'Provident Fund', category: 'DEDUCTION', sequence: 50, computation_method: 'Percentage', amount: 12 },
+      { id: 'rule_206', code: 'TAX', name: 'Executive Income Tax', category: 'DEDUCTION', sequence: 60, computation_method: 'Percentage', amount: 15 },
     ],
   },
 ];
 
 const MOCK_PAYRUNS: Payrun[] = [
   {
-    id: 1,
+    id: 'pr_2026_09',
     name: 'September 2026 Regular Payrun',
-    structure_id: 1,
+    structure_id: 'struct_1',
     structure_name: 'Standard Monthly Salary',
     period_start: '2026-09-01',
     period_end: '2026-09-30',
     status: 'Draft',
-    employee_count: 4,
-    total_gross: 24800,
-    total_net: 20450,
-    warnings: [
-      {
-        employee_id: 3,
-        employee_name: 'David Vance',
-        type: 'MISSING_BANK_DETAILS',
-        message: 'Employee is missing valid email/bank account details for automated payout.',
-      },
-    ],
+    employee_count: 3,
+    total_gross: 23900,
+    total_net: 18642,
+    warnings: [],
   },
   {
-    id: 2,
-    name: 'August 2026 Regular Payrun',
-    structure_id: 1,
+    id: 'pr_2026_08',
+    name: 'August 2026 Monthly Payrun',
+    structure_id: 'struct_1',
     structure_name: 'Standard Monthly Salary',
     period_start: '2026-08-01',
     period_end: '2026-08-31',
     status: 'Paid',
-    employee_count: 4,
-    total_gross: 24800,
-    total_net: 20450,
+    employee_count: 3,
+    total_gross: 23900,
+    total_net: 18642,
     warnings: [],
-  },
-];
-
-const MOCK_PAYSLIPS: PayslipDetail[] = [
-  {
-    id: 1,
-    payrun_id: 1,
-    payrun_name: 'September 2026 Regular Payrun',
-    period_start: '2026-09-01',
-    period_end: '2026-09-30',
-    employee_id: 1,
-    employee_name: 'Amara Chen',
-    department_name: 'Sales & Retail',
-    job_position: 'Store Supervisor',
-    contract_wage: 5200,
-    basic_wage: 5200,
-    gross_wage: 7780,
-    net_wage: 6424,
-    status: 'Draft',
-    lines: [
-      { rule_id: 101, code: 'BASIC', name: 'Basic Wage', category: 'BASIC', sequence: 10, amount: 5200 },
-      { rule_id: 102, code: 'HRA', name: 'House Rent Allowance (40%)', category: 'ALLOWANCE', sequence: 20, amount: 2080 },
-      { rule_id: 103, code: 'TA', name: 'Transport Allowance', category: 'ALLOWANCE', sequence: 30, amount: 300 },
-      { rule_id: 104, code: 'SUP_ALW', name: 'Supervisor Allowance', category: 'ALLOWANCE', sequence: 40, amount: 200 },
-      { rule_id: 105, code: 'PF', name: 'Provident Fund (Capped $1800)', category: 'DEDUCTION', sequence: 50, amount: 624 },
-      { rule_id: 106, code: 'TAX', name: 'Income Tax (10%)', category: 'DEDUCTION', sequence: 60, amount: 732 },
-    ],
-  },
-  {
-    id: 2,
-    payrun_id: 1,
-    payrun_name: 'September 2026 Regular Payrun',
-    period_start: '2026-09-01',
-    period_end: '2026-09-30',
-    employee_id: 2,
-    employee_name: 'Bhavna Patel',
-    department_name: 'Human Resources',
-    job_position: 'HR Specialist',
-    contract_wage: 4200,
-    basic_wage: 4200,
-    gross_wage: 6180,
-    net_wage: 5122,
-    status: 'Draft',
-    lines: [
-      { rule_id: 101, code: 'BASIC', name: 'Basic Wage', category: 'BASIC', sequence: 10, amount: 4200 },
-      { rule_id: 102, code: 'HRA', name: 'House Rent Allowance (40%)', category: 'ALLOWANCE', sequence: 20, amount: 1680 },
-      { rule_id: 103, code: 'TA', name: 'Transport Allowance', category: 'ALLOWANCE', sequence: 30, amount: 300 },
-      { rule_id: 105, code: 'PF', name: 'Provident Fund (Capped $1800)', category: 'DEDUCTION', sequence: 50, amount: 504 },
-      { rule_id: 106, code: 'TAX', name: 'Income Tax (10%)', category: 'DEDUCTION', sequence: 60, amount: 554 },
-    ],
   },
 ];
 
@@ -207,83 +158,47 @@ export class PayrollApiClient {
     return this.request('/structures', {}, MOCK_STRUCTURES);
   }
 
-  static async createSalaryRule(rule: Partial<SalaryRule> & { structure_id: number }): Promise<SalaryRule> {
-    const fallbackRule: SalaryRule = {
-      id: Date.now(),
-      structure_id: rule.structure_id,
-      code: rule.code || 'RULE',
-      name: rule.name || 'Custom Salary Rule',
-      category: rule.category || 'ALLOWANCE',
-      sequence: rule.sequence || 50,
-      computation_method: rule.computation_method || 'Fixed',
-      amount: rule.amount ?? null,
-      formula: rule.formula ?? null,
-      cap_amount: rule.cap_amount ?? null,
-      condition_expression: rule.condition_expression ?? null,
-    };
-    return this.request('/rules', { method: 'POST', body: JSON.stringify(rule) }, fallbackRule);
+  static async createSalaryStructure(struct: { name: string; code?: string; description?: string }): Promise<SalaryStructure> {
+    return this.request('/structures', { method: 'POST', body: JSON.stringify(struct) });
+  }
+
+  static async createSalaryRule(rule: Partial<SalaryRule> & { structure_id: string }): Promise<SalaryRule> {
+    return this.request('/rules', { method: 'POST', body: JSON.stringify(rule) });
   }
 
   static async getPayruns(): Promise<Payrun[]> {
     return this.request('/payruns', {}, MOCK_PAYRUNS);
   }
 
-  static async getPayrunById(id: number): Promise<Payrun> {
-    return this.request(`/payruns/${id}`, {}, MOCK_PAYRUNS.find((p) => p.id === id) || MOCK_PAYRUNS[0]);
+  static async getPayrunById(id: string): Promise<Payrun> {
+    return this.request(`/payruns/${id}`, {}, MOCK_PAYRUNS.find((p) => String(p.id) === String(id)) || MOCK_PAYRUNS[0]);
   }
 
-  static async getPayslipsByPayrun(payrunId: number): Promise<PayslipDetail[]> {
-    return this.request(`/payruns/${payrunId}/payslips`, {}, MOCK_PAYSLIPS.filter((p) => p.payrun_id === payrunId));
+  static async getPayslipsByPayrun(payrunId: string): Promise<PayslipDetail[]> {
+    return this.request(`/payruns/${payrunId}/payslips`, {}, []);
   }
 
-  static async getPayslipById(id: number): Promise<PayslipDetail> {
-    return this.request(`/payslips/${id}`, {}, MOCK_PAYSLIPS.find((p) => p.id === id) || MOCK_PAYSLIPS[0]);
+  static async getPayslipById(id: string): Promise<PayslipDetail> {
+    return this.request(`/payslips/${id}`);
   }
 
-  static async createPayrun(payrun: { name: string; structure_id: number; period_start: string; period_end: string; selected_employee_ids: number[] }): Promise<Payrun> {
-    const newId = Date.now();
-    const structureName = MOCK_STRUCTURES.find(s => s.id === payrun.structure_id)?.name || 'Standard Monthly Salary';
-    
-    const newPayrun: Payrun = {
-      id: newId,
-      name: payrun.name,
-      structure_id: payrun.structure_id,
-      structure_name: structureName,
-      period_start: payrun.period_start,
-      period_end: payrun.period_end,
-      status: 'Draft',
-      employee_count: payrun.selected_employee_ids.length,
-      total_gross: payrun.selected_employee_ids.length * 6200,
-      total_net: payrun.selected_employee_ids.length * 5100,
-      warnings: payrun.selected_employee_ids.includes(3) ? [
-        {
-          employee_id: 3,
-          employee_name: 'David Vance',
-          type: 'MISSING_BANK_DETAILS',
-          message: 'Employee is missing valid email/bank account details for automated payout.',
-        }
-      ] : [],
-    };
-
-    // Add to in-memory fallback list
-    MOCK_PAYRUNS.unshift(newPayrun);
-
-    return this.request('/payruns', { method: 'POST', body: JSON.stringify(payrun) }, newPayrun);
+  static async getMyPayslips(): Promise<PayslipDetail[]> {
+    return this.request('/payslips/my', {}, []);
   }
 
-  static async validatePayrun(id: number): Promise<Payrun> {
-    const target = MOCK_PAYRUNS.find(p => p.id === id);
-    if (target) target.status = 'Validated';
-    return this.request(`/payruns/${id}/validate`, { method: 'POST' }, target || { ...MOCK_PAYRUNS[0], status: 'Validated' });
+  static async createPayrun(payrun: { name: string; structure_id: string; period_start: string; period_end: string; selected_employee_ids?: string[] }): Promise<Payrun> {
+    return this.request('/payruns', { method: 'POST', body: JSON.stringify(payrun) });
   }
 
-  static async markPaidPayrun(id: number): Promise<Payrun> {
-    const target = MOCK_PAYRUNS.find(p => p.id === id);
-    if (target) target.status = 'Paid';
-    return this.request(`/payruns/${id}/mark-paid`, { method: 'POST' }, target || { ...MOCK_PAYRUNS[0], status: 'Paid' });
+  static async validatePayrun(id: string): Promise<Payrun> {
+    return this.request(`/payruns/${id}/validate`, { method: 'POST' });
   }
 
-  static async sendPayslips(id: number): Promise<{ total: number; sent: number; failed: number }> {
-    return this.request(`/payruns/${id}/send-payslips`, { method: 'POST' }, { total: 4, sent: 3, failed: 1 });
+  static async markPaidPayrun(id: string): Promise<Payrun> {
+    return this.request(`/payruns/${id}/mark-paid`, { method: 'POST' });
+  }
+
+  static async sendPayslips(id: string): Promise<{ total: number; sent: number; failed: number }> {
+    return this.request(`/payruns/${id}/send-payslips`, { method: 'POST' });
   }
 }

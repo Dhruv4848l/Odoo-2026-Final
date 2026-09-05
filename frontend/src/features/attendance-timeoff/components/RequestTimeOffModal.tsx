@@ -45,9 +45,12 @@ export const RequestTimeOffModal: React.FC<RequestTimeOffModalProps> = ({
 
   if (!isOpen) return null;
 
+  const currentEmpId = user?.employee?.id || (user as any)?.employee_id || (user as any)?.employeeId || user?.id;
   const selectedType = leaveTypes.find((t) => String(t.id) === String(typeId));
-  const matchingAlloc = allocations.find((a) => String(a.time_off_type_id) === String(typeId));
-  const remainingBalance = matchingAlloc ? matchingAlloc.remaining : (selectedType?.requires_allocation ? 0 : 'Unlimited');
+  const matchingAlloc = allocations.find(
+    (a) => String(a.time_off_type_id) === String(typeId) && (String(a.employee_id) === String(currentEmpId) || String(a.employee?.id) === String(currentEmpId))
+  );
+  const remainingBalance = matchingAlloc !== undefined ? matchingAlloc.remaining : (selectedType?.requires_allocation ? 20 : 'Unlimited');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +72,7 @@ export const RequestTimeOffModal: React.FC<RequestTimeOffModalProps> = ({
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          employee_id: user?.employee?.id,
+          employee_id: user?.employee?.id || (user as any)?.employee_id || (user as any)?.employeeId || user?.id,
           time_off_type_id: typeId,
           start_date: startDate,
           end_date: endDate,

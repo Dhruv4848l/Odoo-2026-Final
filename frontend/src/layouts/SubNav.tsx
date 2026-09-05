@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Users, FileText, Calendar, Clock, DollarSign, LayoutDashboard } from 'lucide-react';
+import { Users, FileText, Calendar, Clock, DollarSign, LayoutDashboard, Sliders } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export function getNormalizedRole(user: any): string {
@@ -25,6 +25,7 @@ export const SubNav: React.FC = () => {
     { name: 'Attendance', path: '/attendance', icon: Clock, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user', 'hr_manager', 'employee'] },
     { name: 'Time Off', path: '/timeoff', icon: Calendar, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user', 'hr_manager', 'employee'] },
     { name: 'Payroll & Payruns', path: '/payroll', icon: DollarSign, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user'] },
+    { name: 'Salary Structures & Rules', path: '/payroll/structures', icon: Sliders, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user'] },
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user'] },
   ];
 

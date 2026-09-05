@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Sliders, Code, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { Plus, Sliders, DollarSign, FolderPlus, Info, CheckCircle2 } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
@@ -17,8 +18,16 @@ export const SalaryStructuresPage: React.FC = () => {
   const canManageRules = ['admin', 'hr_payroll_manager'].includes(normalizedRole);
 
   const [structures, setStructures] = useState<SalaryStructure[]>([]);
-  const [selectedStructureId, setSelectedStructureId] = useState<number>(1);
+  const [selectedStructureId, setSelectedStructureId] = useState<string>('struct_1');
   const [isAddRuleModalOpen, setIsAddRuleModalOpen] = useState<boolean>(false);
+  const [isAddStructModalOpen, setIsAddStructModalOpen] = useState<boolean>(false);
+
+  // New Structure Form State
+  const [newStruct, setNewStruct] = useState({
+    name: '',
+    code: '',
+    description: '',
+  });
 
   // New Rule Form State
   const [newRule, setNewRule] = useState<{
@@ -50,14 +59,36 @@ export const SalaryStructuresPage: React.FC = () => {
   const loadStructures = async () => {
     try {
       const data = await PayrollApiClient.getStructures();
-      setStructures(data);
-      if (data.length > 0) setSelectedStructureId(data[0].id);
+      setStructures(data || []);
+      if (data && data.length > 0 && !selectedStructureId) {
+        setSelectedStructureId(data[0].id);
+      }
     } catch (err) {
       console.error('Error loading structures:', err);
     }
   };
 
-  const currentStructure = structures.find((s) => s.id === selectedStructureId) || structures[0];
+  const currentStructure = structures.find((s) => String(s.id) === String(selectedStructureId)) || structures[0];
+
+  const handleCreateStructure = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStruct.name.trim()) return;
+
+    try {
+      const created = await PayrollApiClient.createSalaryStructure({
+        name: newStruct.name.trim(),
+        code: newStruct.code.trim().toUpperCase() || undefined,
+        description: newStruct.description.trim() || undefined,
+      });
+
+      setStructures((prev) => [...prev, created]);
+      setSelectedStructureId(created.id);
+      setIsAddStructModalOpen(false);
+      setNewStruct({ name: '', code: '', description: '' });
+    } catch (err) {
+      console.error('Error creating salary structure:', err);
+    }
+  };
 
   const handleCreateRule = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,50 +186,148 @@ export const SalaryStructuresPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Top Module Sub-Navigation Bar */}
+      <div className="flex items-center gap-2 border-b border-[#E5E7EB] pb-3">
+        <NavLink
+          to="/payroll"
+          end
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+              isActive
+                ? 'bg-[#5B4FE9] text-white shadow-sm'
+                : 'bg-white border border-[#E5E7EB] text-[#6B7280] hover:bg-slate-50'
+            }`
+          }
+        >
+          <DollarSign className="w-4 h-4" />
+          <span>Payruns & Batches</span>
+        </NavLink>
+
+        <NavLink
+          to="/payroll/structures"
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+              isActive
+                ? 'bg-[#5B4FE9] text-white shadow-sm'
+                : 'bg-white border border-[#E5E7EB] text-[#6B7280] hover:bg-slate-50'
+            }`
+          }
+        >
+          <Sliders className="w-4 h-4" />
+          <span>Salary Structures & Rules</span>
+        </NavLink>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-[#1A1A2E]">Salary Structure Setup</h1>
-          <p className="text-xs text-[#6B7280]">Configure sequenced salary rules, percentages, formulas, and caps</p>
+          <p className="text-xs text-[#6B7280]">Configure sequenced salary rules, percentages, formulas, and caps for payroll computation</p>
         </div>
         {canManageRules ? (
-          <Button variant="primary" className="gap-2" onClick={() => setIsAddRuleModalOpen(true)}>
-            <Plus className="w-4 h-4" />
-            <span>Add Salary Rule</span>
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" className="gap-2" onClick={() => setIsAddStructModalOpen(true)}>
+              <FolderPlus className="w-4 h-4 text-[#5B4FE9]" />
+              <span>Create Structure</span>
+            </Button>
+
+            <Button variant="primary" className="gap-2" onClick={() => setIsAddRuleModalOpen(true)}>
+              <Plus className="w-4 h-4" />
+              <span>Add Salary Rule</span>
+            </Button>
+          </div>
         ) : (
           <Badge variant="neutral" showDot={false}>Read-Only Access (HR Payroll User)</Badge>
         )}
       </div>
 
       {/* Structure Selector Tabs */}
-      <div className="flex items-center gap-3 border-b border-[#E5E7EB] pb-3">
-        {structures.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setSelectedStructureId(s.id)}
-            className={`px-4 py-2 text-xs font-semibold rounded-full transition-all ${
-              s.id === selectedStructureId
-                ? 'bg-[#5B4FE9] text-white shadow-sm'
-                : 'bg-white border border-[#E5E7EB] text-[#6B7280] hover:bg-slate-50'
-            }`}
-          >
-            {s.name}
-          </button>
-        ))}
+      <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3 overflow-x-auto">
+        <div className="flex items-center gap-3">
+          {structures.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSelectedStructureId(s.id)}
+              className={`px-4 py-2 text-xs font-semibold rounded-full transition-all flex items-center gap-2 ${
+                s.id === selectedStructureId
+                  ? 'bg-[#5B4FE9] text-white shadow-sm'
+                  : 'bg-white border border-[#E5E7EB] text-[#6B7280] hover:bg-slate-50'
+              }`}
+            >
+              <span>{s.name}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${s.id === selectedStructureId ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                {s.rules?.length || 0} Rules
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Rules Table */}
       {currentStructure && (
-        <Card title={`${currentStructure.name} — Sequenced Execution Rules`} subtitle="Rules run in strict sequence order from top to bottom">
+        <Card
+          title={`${currentStructure.name} — Sequenced Execution Rules`}
+          subtitle={currentStructure.description || 'Rules execute in strict sequence order (BASIC → ALLOWANCE → DEDUCTION)'}
+        >
           <Table
             columns={columns}
             data={currentStructure.rules || []}
             keyExtractor={(row) => row.id}
-            emptyMessage="No rules configured for this structure."
+            emptyMessage="No rules configured for this structure. Click 'Add Salary Rule' to create rules."
           />
         </Card>
       )}
+
+      {/* Information Banner */}
+      <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl flex items-start gap-3 text-xs text-indigo-900">
+        <Info className="w-5 h-5 text-[#5B4FE9] shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="font-semibold text-indigo-950">How Salary Rules calculate payroll for employee contracts:</p>
+          <ul className="list-disc list-inside space-y-0.5 text-indigo-800/90">
+            <li><strong>BASIC</strong>: Sets the base wage (e.g. Contract wage or fixed amount).</li>
+            <li><strong>ALLOWANCES</strong>: Added to Gross Salary (Fixed $ amount, % of Basic, or formula).</li>
+            <li><strong>DEDUCTIONS</strong>: Subtracted from Gross Salary to yield Net Payable Salary (PF, Income Tax, etc.).</li>
+            <li><strong>UNPAID LEAVES</strong>: Automatically prorated according to period attendance and time-off records.</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Create Structure Modal */}
+      <Modal
+        isOpen={isAddStructModalOpen}
+        onClose={() => setIsAddStructModalOpen(false)}
+        title="Create New Salary Structure"
+        subtitle="Define a new payroll calculation group (e.g. Regular, Executive, Contractor)"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setIsAddStructModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={handleCreateStructure}>Create Structure</Button>
+          </>
+        }
+      >
+        <form onSubmit={handleCreateStructure} className="space-y-4">
+          <Input
+            label="Structure Name *"
+            placeholder="e.g. Intern & Trainee Salary Structure"
+            value={newStruct.name}
+            onChange={(e) => setNewStruct({ ...newStruct, name: e.target.value })}
+            required
+          />
+          <Input
+            label="Structure Code (Optional)"
+            placeholder="e.g. INTERN_STRUCTURE"
+            value={newStruct.code}
+            onChange={(e) => setNewStruct({ ...newStruct, code: e.target.value })}
+          />
+          <Input
+            label="Description (Optional)"
+            placeholder="e.g. Structure with stipend allowances and zero tax deductions"
+            value={newStruct.description}
+            onChange={(e) => setNewStruct({ ...newStruct, description: e.target.value })}
+          />
+        </form>
+      </Modal>
+
 
       {/* Add Rule Modal */}
       <Modal

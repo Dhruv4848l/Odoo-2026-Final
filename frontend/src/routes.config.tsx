@@ -76,6 +76,14 @@ export const AppRoutes: React.FC = () => {
         }
       />
       <Route
+        path="/employees/new"
+        element={
+          <ProtectedLayout allowedRoles={HR_ROLES}>
+            <EmployeeFormPage />
+          </ProtectedLayout>
+        }
+      />
+      <Route
         path="/employees/:id"
         element={
           <ProtectedLayout allowedRoles={ALL_ROLES}>
