@@ -5,7 +5,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // PostgreSQL direct pool (Dev C)
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.iejfvpcbkulrbzkfbdfu:%24OdooHackathon420@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres';
+let rawConnectionString = process.env.DATABASE_URL || 'postgresql://postgres.iejfvpcbkulrbzkfbdfu:%24OdooHackathon420@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres';
+
+// Auto-convert legacy/direct IPv6 Supabase domain to IPv4 Pooler host on any team environment
+if (rawConnectionString.includes('db.iejfvpcbkulrbzkfbdfu.supabase.co')) {
+  rawConnectionString = 'postgresql://postgres.iejfvpcbkulrbzkfbdfu:%24OdooHackathon420@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres';
+}
+
+const connectionString = rawConnectionString;
 
 export const pool = new Pool({
   connectionString,
