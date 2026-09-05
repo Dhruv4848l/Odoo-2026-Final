@@ -1,0 +1,1 @@
+{ "name": "peoplepay360", "private": true, "workspaces": ["frontend", "backend"] }
