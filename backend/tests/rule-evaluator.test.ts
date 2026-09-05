@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { RuleEvaluator, EvaluationContext, SalaryRuleDefinition } from '../src/modules/payroll-engine/services/rule-evaluator';
+import { RuleEvaluator, EvaluationContext, SalaryRuleDefinition } from '../src/modules/payroll-engine/services/rule-evaluator.js';
 
 console.log('--- Running RuleEvaluator Unit Tests ---');
 

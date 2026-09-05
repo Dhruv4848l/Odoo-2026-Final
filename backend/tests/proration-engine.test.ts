@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { ProrationEngine } from '../src/modules/payroll-engine/services/proration-engine';
+import { ProrationEngine } from '../src/modules/payroll-engine/services/proration-engine.js';
 
 console.log('--- Running ProrationEngine Unit Tests ---');
 
