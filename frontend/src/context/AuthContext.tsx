@@ -49,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(newToken);
     setUser(newUser);
     localStorage.setItem('pp360_token', newToken);
+    localStorage.setItem('token', newToken);
     localStorage.setItem('pp360_user', JSON.stringify(newUser));
   };
 
@@ -56,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setUser(null);
     localStorage.removeItem('pp360_token');
+    localStorage.removeItem('token');
     localStorage.removeItem('pp360_user');
   };
 

@@ -51,19 +51,11 @@ const ProtectedLayout: React.FC<{ children: React.ReactNode; allowedRoles?: stri
   );
 };
 
-const RootRedirect: React.FC = () => {
-  const { user } = useAuth();
-  if (!user) return <LandingPage />;
-  const normalizedRole = getNormalizedRole(user);
-  if (normalizedRole === 'employee') return <Navigate to="/attendance" replace />;
-  if (normalizedRole === 'hr_manager') return <Navigate to="/employees" replace />;
-  return <Navigate to="/payroll" replace />;
-};
-
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      <Route path="/" element={<RootRedirect />} />
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/landing" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
 
       {/* Dev A Modules */}
@@ -169,7 +161,8 @@ export const AppRoutes: React.FC = () => {
 };
 
 export const routes: RouteObject[] = [
-  { path: '/', element: <Navigate to="/payroll" replace /> },
+  { path: '/', element: <LandingPage /> },
+  { path: '/landing', element: <LandingPage /> },
   { path: '/employees', element: <EmployeeKanbanPage /> },
   { path: '/attendance', element: <AttendanceListPage /> },
   { path: '/dashboard', element: <PayrollDashboardPage /> },

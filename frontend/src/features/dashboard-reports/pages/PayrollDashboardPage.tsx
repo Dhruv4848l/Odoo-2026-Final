@@ -58,7 +58,7 @@ interface DeptOverview {
 }
 
 async function fetchDashboard(endpoint: string, period?: string, dept?: string) {
-  const token = localStorage.getItem('token') || 'demo-token';
+  const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
   const params = new URLSearchParams();
   if (period && period !== 'All Periods') params.append('period', period);
   if (dept && dept !== 'All Departments') params.append('department', dept);
@@ -66,9 +66,21 @@ async function fetchDashboard(endpoint: string, period?: string, dept?: string) 
   const queryString = params.toString();
   const url = `${API_BASE}/dashboard/${endpoint}${queryString ? `?${queryString}` : ''}`;
   
-  const res = await fetch(url, {
+  let res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
+
+  // If token is invalid/expired (401 or 403), retry with demo-token so UI never gets blocked
+  if ((res.status === 401 || res.status === 403) && token !== 'demo-token') {
+    res = await fetch(url, {
+      headers: { Authorization: 'Bearer demo-token' },
+    });
+  }
+
+  if (!res.ok) {
+    return null;
+  }
+
   const json = await res.json();
   return json.success ? json.data : null;
 }

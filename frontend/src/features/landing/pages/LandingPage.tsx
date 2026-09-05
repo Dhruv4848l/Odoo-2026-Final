@@ -1,518 +1,1065 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../../../components/ui/Button';
-import { Card } from '../../../components/ui/Card';
-import { Badge } from '../../../components/ui/Badge';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Lenis from 'lenis';
 import {
-  Users,
-  FileText,
-  Calendar,
-  Clock,
-  DollarSign,
-  LayoutDashboard,
-  ShieldCheck,
-  Zap,
-  CheckCircle2,
-  ArrowRight,
   Sparkles,
-  Lock,
+  ShieldCheck,
+  KeyRound,
+  Users,
+  FileSignature,
+  CalendarDays,
+  Clock,
+  Calculator,
   BarChart3,
-  Award,
-  ChevronRight,
-  Eye,
-  Check,
-  X,
-  AlertTriangle,
-  Plus,
-  PlayCircle,
-  HelpCircle,
+  CheckCircle2,
+  XCircle,
+  ChevronDown,
+  Sun,
+  Moon,
+  ArrowRight,
+  Layers,
+  Building2,
+  FileText,
+  Lock,
 } from 'lucide-react';
+import { ProductDemoVideo } from '../components/ProductDemoVideo';
+import '../landing.css';
+
+gsap.registerPlugin(ScrollTrigger);
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedRole, setSelectedRole] = useState<'admin' | 'hr_manager' | 'hr_payroll_manager' | 'employee'>('admin');
-  const [activeTab, setActiveTab] = useState<'kanban' | 'overlap' | 'schedule' | 'amara'>('kanban');
 
-  const features = [
-    {
-      icon: Users,
-      title: 'Employee Hub & Navigation',
-      description: 'Centralized headcount directory with Kanban, List, and Form views. Instant smart-button links to Contracts, Attendance, and Time Off.',
-      squad: 'Dev A Core HR',
-    },
-    {
-      icon: FileText,
-      title: 'Contract Management & Overlap Guard',
-      description: 'Historical contract tracking with period-active wage resolution and automated blocking of overlapping active contracts.',
-      squad: 'Dev A Core HR',
-    },
-    {
-      icon: Calendar,
-      title: 'Working Schedule Builder',
-      description: 'Custom weekly pattern grid (Mon–Sun) with auto-calculated total weekly hours, assignable to employees or contract overrides.',
-      squad: 'Dev A Core HR',
-    },
-    {
-      icon: Clock,
-      title: 'Attendance & Presence Widget',
-      description: 'Floating check-in/check-out popup with running totals, missing checkout flags, and manual correction audit trails.',
-      squad: 'Dev B Time & Presence',
-    },
-    {
-      icon: DollarSign,
-      title: 'Sequenced Payroll Engine',
-      description: '2-step Payrun wizard with fixed, percentage, and formula rules, proration, PF caps, PDF generation, and bulk emailing.',
-      squad: 'Dev C Payroll Engine',
-    },
-    {
-      icon: LayoutDashboard,
-      title: 'Live Analytics Dashboard',
-      description: 'Real-time KPIs, salary cost charts, attendance breakdown, and proactive system warning alerts.',
-      squad: 'Dev D Platform',
-    },
-  ];
+  // Theme & Navigation State
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [navScrolled, setNavScrolled] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [activeRoleIndex, setActiveRoleIndex] = useState<number | null>(null);
+  const [timerText, setTimerText] = useState<string>('02:14:37');
 
-  const roleSpecs = {
-    admin: {
-      name: 'System Admin',
-      badge: 'Full Access',
-      badgeStatus: 'active' as const,
-      email: 'admin@peoplepay360.com',
-      rights: ['Full HR Access', 'Full Payroll Access', 'User & Role Management', 'System Analytics'],
-      denied: [],
-    },
-    hr_manager: {
-      name: 'HR Manager',
-      badge: 'HR Modules Only',
-      badgeStatus: 'info' as const,
-      email: 'hr.manager@peoplepay360.com',
-      rights: ['Full Employee Directory', 'Contract Management', 'Time Off Approval', 'Attendance Tracking'],
-      denied: ['Payroll Screens (403 Blocked)', 'Salary Rules Setup'],
-    },
-    hr_payroll_manager: {
-      name: 'HR Payroll Manager',
-      badge: 'HR + Payroll Full',
-      badgeStatus: 'active' as const,
-      email: 'payroll@peoplepay360.com',
-      rights: ['Full HR Access', 'Payrun Processing', 'Salary Structures & Rules', 'PDF Payslips & Bulk Email'],
-      denied: ['User Role Administration'],
-    },
-    employee: {
-      name: 'Amara Chen (Employee)',
-      badge: 'Own Profile Scoped',
-      badgeStatus: 'warning' as const,
-      email: 'amara.chen@peoplepay360.com',
-      rights: ['View Own Profile', 'Check-In / Out Attendance', 'Submit Leave Requests'],
-      denied: ['Create New Employee', 'Create Contract', 'View Other Employees', 'Payroll Access'],
-    },
+  // DOM Refs
+  const cursorGlowRef = useRef<HTMLDivElement | null>(null);
+  const spineFillRef = useRef<HTMLDivElement | null>(null);
+  const stepperFillRef = useRef<HTMLDivElement | null>(null);
+  const miniChartRef = useRef<HTMLDivElement | null>(null);
+
+  // 1. Theme initialization & sync
+  useEffect(() => {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    setTheme(currentTheme === 'dark' ? 'dark' : 'light');
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
   };
 
-  const amaraTimeline = [
-    { date: 'Jan 15, 2026', title: 'Initial Hire', desc: 'Hired as Sales Associate ($4,500/mo) with standard 40h schedule.' },
-    { date: 'Jun 01, 2026', title: 'Promotion', desc: 'Promoted to Store Supervisor. Previous contract ended, overlap validated.' },
-    { date: 'Sep 10, 2026', title: 'Parental Leave', desc: 'Approved paid leave against Allocation; Basic salary preserved.' },
-    { date: 'Nov 20, 2026', title: 'Resignation', desc: 'Nov payslip prorated to 20th; excluded from Dec Payrun.' },
-  ];
+  // 2. Lenis Smooth Scroll Engine & GSAP Synchronization
+  useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+
+    const lenis = new Lenis({
+      duration: 1.25,
+      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      wheelMultiplier: 1,
+      touchMultiplier: 1.8,
+    });
+
+    // Synchronize Lenis scroll updates with GSAP ScrollTrigger
+    lenis.on('scroll', ScrollTrigger.update);
+
+    // Drive Lenis with GSAP's optimized ticker for 60/120fps smoothness
+    const updateTicker = (time: number) => {
+      lenis.raf(time * 1000);
+    };
+    gsap.ticker.add(updateTicker);
+    gsap.ticker.lagSmoothing(0);
+
+    // Intercept in-page anchor links for momentum smooth scrolling
+    const handleAnchorClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest('a[href^="#"]');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (href && href.startsWith('#') && href.length > 1) {
+        e.preventDefault();
+        const targetEl = document.querySelector(href);
+        if (targetEl) {
+          lenis.scrollTo(targetEl as HTMLElement, { offset: -70, duration: 1.2 });
+        }
+      }
+    };
+    document.addEventListener('click', handleAnchorClick);
+
+    return () => {
+      document.removeEventListener('click', handleAnchorClick);
+      gsap.ticker.remove(updateTicker);
+      lenis.destroy();
+    };
+  }, []);
+
+  // 3. Navigation scroll listener
+  useEffect(() => {
+    const handleScroll = () => {
+      setNavScrolled(window.scrollY > 25);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // 3. Attendance Timer Tick
+  useEffect(() => {
+    let secs = 2 * 3600 + 14 * 60 + 37;
+    const interval = setInterval(() => {
+      secs++;
+      const h = String(Math.floor(secs / 3600)).padStart(2, '0');
+      const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
+      const s = String(secs % 60).padStart(2, '0');
+      setTimerText(`${h}:${m}:${s}`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 4. Cursor glow tracking & magnetic buttons & tilt cards
+  useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const finePointer = window.matchMedia('(pointer:fine)').matches;
+
+    // Cursor Glow
+    const handleMouseMoveGlow = (e: MouseEvent) => {
+      if (cursorGlowRef.current && finePointer && !reduced) {
+        gsap.to(cursorGlowRef.current, {
+          left: e.clientX,
+          top: e.clientY,
+          duration: 0.45,
+          ease: 'power2.out',
+        });
+      }
+    };
+    if (finePointer && !reduced) {
+      window.addEventListener('mousemove', handleMouseMoveGlow);
+    }
+
+    // Magnetic Buttons
+    const magneticEls = document.querySelectorAll<HTMLElement>('.magnetic');
+    const magneticCleanups: Array<() => void> = [];
+
+    if (!reduced) {
+      magneticEls.forEach((btn) => {
+        const move = (e: MouseEvent) => {
+          const r = btn.getBoundingClientRect();
+          const x = (e.clientX - r.left - r.width / 2) * 0.25;
+          const y = (e.clientY - r.top - r.height / 2) * 0.35;
+          gsap.to(btn, { x, y, duration: 0.35, ease: 'power2.out' });
+        };
+        const leave = () => {
+          gsap.to(btn, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.4)' });
+        };
+        btn.addEventListener('mousemove', move);
+        btn.addEventListener('mouseleave', leave);
+        magneticCleanups.push(() => {
+          btn.removeEventListener('mousemove', move);
+          btn.removeEventListener('mouseleave', leave);
+        });
+      });
+    }
+
+    // Tilt on cards
+    const tiltEls = document.querySelectorAll<HTMLElement>('.landing-card, .kpi-card, .cta-panel');
+    const tiltCleanups: Array<() => void> = [];
+
+    if (finePointer && !reduced) {
+      tiltEls.forEach((el) => {
+        const move = (e: MouseEvent) => {
+          const r = el.getBoundingClientRect();
+          const px = (e.clientX - r.left) / r.width - 0.5;
+          const py = (e.clientY - r.top) / r.height - 0.5;
+          gsap.to(el, {
+            rotateX: py * -6,
+            rotateY: px * 6,
+            transformPerspective: 950,
+            duration: 0.4,
+            ease: 'power2.out',
+          });
+        };
+        const leave = () => {
+          gsap.to(el, { rotateX: 0, rotateY: 0, duration: 0.6, ease: 'power3.out' });
+        };
+        el.addEventListener('mousemove', move);
+        el.addEventListener('mouseleave', leave);
+        tiltCleanups.push(() => {
+          el.removeEventListener('mousemove', move);
+          el.removeEventListener('mouseleave', leave);
+        });
+      });
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMoveGlow);
+      magneticCleanups.forEach((fn) => fn());
+      tiltCleanups.forEach((fn) => fn());
+    };
+  }, []);
+
+  // 5. Hero Entrance animation
+  useEffect(() => {
+    gsap
+      .timeline()
+      .to('.hero .reveal-el', { opacity: 1, y: 0, duration: 0.8, stagger: 0.09, ease: 'power3.out' })
+      .to('.hero-right-stage', { opacity: 1, y: 0, duration: 0.85, ease: 'power2.out' }, '-=0.6');
+  }, []);
+
+  // 6. GSAP ScrollTrigger Animations
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      // Reveal Elements on scroll
+      gsap.utils.toArray<HTMLElement>('.reveal-el').forEach((el) => {
+        if (el.closest('.hero')) return;
+        gsap.fromTo(
+          el,
+          { opacity: 0, y: 26 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.85,
+            ease: 'power3.out',
+            scrollTrigger: { trigger: el, start: 'top 88%' },
+          }
+        );
+      });
+
+      // Count Up KPIs
+      document.querySelectorAll<HTMLElement>('.count').forEach((el) => {
+        const target = +(el.dataset.count || 0);
+        ScrollTrigger.create({
+          trigger: el,
+          start: 'top 90%',
+          once: true,
+          onEnter: () => {
+            const obj = { v: 0 };
+            gsap.to(obj, {
+              v: target,
+              duration: 1.3,
+              ease: 'power1.out',
+              onUpdate: () => {
+                el.textContent = String(Math.round(obj.v));
+              },
+            });
+          },
+        });
+      });
+
+      // Timeline Spine Fill
+      if (spineFillRef.current) {
+        ScrollTrigger.create({
+          trigger: '.timeline',
+          start: 'top 70%',
+          end: 'bottom 60%',
+          scrub: 0.5,
+          onUpdate: (self) => {
+            if (spineFillRef.current) {
+              spineFillRef.current.style.height = self.progress * 100 + '%';
+            }
+          },
+        });
+      }
+
+      // Stepper Fill
+      if (stepperFillRef.current) {
+        ScrollTrigger.create({
+          trigger: stepperFillRef.current,
+          start: 'top 85%',
+          once: true,
+          onEnter: () => {
+            gsap.to(stepperFillRef.current, { width: '55%', duration: 1.1, ease: 'power2.out' });
+          },
+        });
+      }
+
+      // Mini Chart Bars
+      if (miniChartRef.current) {
+        ScrollTrigger.create({
+          trigger: miniChartRef.current,
+          start: 'top 85%',
+          once: true,
+          onEnter: () => {
+            const bars = miniChartRef.current?.querySelectorAll<HTMLElement>('div');
+            bars?.forEach((bar, i) => {
+              const h = bar.style.getPropertyValue('--h');
+              gsap.to(bar, { height: h, duration: 0.9, delay: i * 0.07, ease: 'power3.out' });
+            });
+          },
+        });
+      }
+    });
+
+    return () => ctx.revert();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-canvas text-ink font-sans flex flex-col selection:bg-primary-light selection:text-primary">
-      {/* Top Utility Nav */}
-      <header className="h-[64px] bg-navy text-white px-6 md:px-12 flex items-center justify-between shadow-md sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center font-bold text-xl text-white shadow-sm ring-2 ring-primary/40">
-            P
-          </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-lg tracking-wide text-white">PeoplePay360</span>
-            <span className="text-[10px] text-gray-400 font-medium">HR & Payroll Operations Platform</span>
-          </div>
-        </div>
+    <div className="landing-body-wrap">
+      {/* Noise Grain Overlay */}
+      <div className="grain"></div>
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/login')}
-            className="text-xs font-semibold text-gray-300 hover:text-white transition-colors hidden sm:block"
-          >
-            Sign In
-          </button>
-          <Button variant="primary" size="sm" onClick={() => navigate('/login')}>
-            Launch Platform
-            <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-          </Button>
-        </div>
-      </header>
+      {/* Radial Cursor Glow Tracking */}
+      <div className="cursor-glow" id="cursorGlow" ref={cursorGlowRef}></div>
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-b from-navy via-navy/95 to-canvas text-white pt-16 pb-24 px-6 md:px-12 text-center relative overflow-hidden">
-        {/* Subtle background glow */}
-        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+      {/* Modern Floating Header Navigation */}
+      <div className="landing-nav-wrapper">
+        <header className={`landing-nav ${navScrolled ? 'scrolled' : ''}`} id="nav">
+          <div className="nav-inner">
+            <a className="brand" href="#top">
+              <span className="brand-badge">P</span>
+              <span className="brand-text">
+                <strong>PeoplePay360</strong>
+                <small>Connected HR &amp; Payroll</small>
+              </span>
+            </a>
 
-        <div className="max-w-4xl mx-auto flex flex-col items-center gap-6 relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/15 text-primary-light text-xs font-semibold backdrop-blur-xs shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-primary-light" />
-            <span>Finnova Design System · Odoo 2026 Reference Theme</span>
-          </div>
-
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight text-white">
-            Reconcile Headcount, Contracts & Payroll in <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-light to-primary">One Flow</span>
-          </h1>
-
-          <p className="text-base md:text-lg text-gray-300 max-w-2xl font-normal leading-relaxed">
-            Every employee, contract, schedule, attendance log, and salary rule reconciles seamlessly into one verified payslip. Built with strict role-based access and zero-conflict modular architecture.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
-            <Button variant="primary" size="lg" onClick={() => navigate('/login')} className="w-full sm:w-auto shadow-lg">
-              Launch Live App
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => navigate('/login')}
-              className="w-full sm:w-auto bg-white/10 border-white/20 text-white hover:bg-white/20"
+            <nav
+              className="nav-links"
+              style={
+                mobileMenuOpen
+                  ? {
+                      display: 'flex',
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      left: 0,
+                      right: 0,
+                      background: 'var(--surface)',
+                      flexDirection: 'column',
+                      padding: '20px 24px',
+                      gap: '16px',
+                      borderRadius: '18px',
+                      border: '1px solid var(--border)',
+                      boxShadow: '0 12px 36px rgba(0,0,0,0.12)',
+                    }
+                  : {}
+              }
             >
-              <Lock className="w-4 h-4 mr-2 text-primary-light" />
-              Sign In (Demo Roles)
-            </Button>
+              <a href="#stack" onClick={() => setMobileMenuOpen(false)}>
+                Features
+              </a>
+              <a href="#security" onClick={() => setMobileMenuOpen(false)}>
+                Role Security
+              </a>
+              <a href="#stack" onClick={() => setMobileMenuOpen(false)}>
+                HR Modules
+              </a>
+              <a href="#stack" onClick={() => setMobileMenuOpen(false)}>
+                Payroll Engine
+              </a>
+              <a href="#story" onClick={() => setMobileMenuOpen(false)}>
+                Scenario Tour
+              </a>
+            </nav>
+
+            <div className="nav-actions">
+              <button
+                className="theme-toggle"
+                id="themeToggle"
+                aria-label="Toggle color theme"
+                onClick={toggleTheme}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <Moon className="w-4 h-4 text-slate-700" />
+                )}
+              </button>
+
+              {/* Single Primary Action Button */}
+              <button className="landing-btn btn-primary magnetic shadow-glow" onClick={() => navigate('/login')}>
+                <span>Launch Platform</span>
+                <ArrowRight className="w-3.5 h-3.5 arrow" />
+              </button>
+            </div>
+
+            <button
+              className="nav-burger"
+              id="navBurger"
+              aria-label="Menu"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
           </div>
-        </div>
-      </section>
+        </header>
+      </div>
 
-      {/* KPI Highlight Strip */}
-      <section className="-mt-10 px-6 md:px-12 max-w-6xl mx-auto w-full z-20">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card variant="kpi" className="bg-white border border-border shadow-md">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate uppercase">Accuracy</span>
-              <ShieldCheck className="w-4 h-4 text-success" />
-            </div>
-            <span className="text-2xl md:text-3xl font-extrabold text-ink">100%</span>
-            <span className="text-xs text-slate mt-1 block">Rule Reconciliation</span>
-          </Card>
+      <main id="top">
+        {/* HERO SECTION - FULL VIEWPORT HEIGHT */}
+        <section className="hero">
+          <div className="hero-bg">
+            <span className="blob-1"></span>
+            <span className="blob-2"></span>
+          </div>
+          <div className="hero-grid"></div>
 
-          <Card variant="kpi" className="bg-white border border-border shadow-md">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate uppercase">Security</span>
-              <Lock className="w-4 h-4 text-primary" />
-            </div>
-            <span className="text-2xl md:text-3xl font-extrabold text-ink">5 Roles</span>
-            <span className="text-xs text-slate mt-1 block">Enforced RBAC Matrix</span>
-          </Card>
-
-          <Card variant="kpi" className="bg-white border border-border shadow-md">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate uppercase">Database</span>
-              <Zap className="w-4 h-4 text-warning" />
-            </div>
-            <span className="text-2xl md:text-3xl font-extrabold text-ink">Supabase</span>
-            <span className="text-xs text-slate mt-1 block">Shared Postgres DB</span>
-          </Card>
-
-          <Card variant="kpi" className="bg-white border border-border shadow-md">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate uppercase">Architecture</span>
-              <BarChart3 className="w-4 h-4 text-info" />
-            </div>
-            <span className="text-2xl md:text-3xl font-extrabold text-ink">4 Squads</span>
-            <span className="text-xs text-slate mt-1 block">Parallel Conflict-Free</span>
-          </Card>
-        </div>
-      </section>
-
-      {/* Interactive Feature Explorer Tabs */}
-      <section className="py-16 px-6 md:px-12 max-w-6xl mx-auto w-full">
-        <div className="text-center max-w-2xl mx-auto mb-10">
-          <Badge status="info">Interactive Preview</Badge>
-          <h2 className="text-3xl font-extrabold text-ink mt-3">Developer A Features Showcase</h2>
-          <p className="text-xs md:text-sm text-slate mt-2">
-            Explore the core HR foundation built for Developer A (Auth, Employee Directory, Contracts & Schedules).
-          </p>
-        </div>
-
-        {/* Feature Tabs Header */}
-        <div className="flex justify-center border-b border-border gap-2 md:gap-4 overflow-x-auto pb-1 mb-6">
-          <button
-            onClick={() => setActiveTab('kanban')}
-            className={`px-4 py-2 text-xs md:text-sm font-bold border-b-2 transition-all ${
-              activeTab === 'kanban' ? 'border-primary text-primary' : 'border-transparent text-slate hover:text-ink'
-            }`}
-          >
-            Employee Directory
-          </button>
-          <button
-            onClick={() => setActiveTab('overlap')}
-            className={`px-4 py-2 text-xs md:text-sm font-bold border-b-2 transition-all ${
-              activeTab === 'overlap' ? 'border-primary text-primary' : 'border-transparent text-slate hover:text-ink'
-            }`}
-          >
-            Contract Overlap Guard
-          </button>
-          <button
-            onClick={() => setActiveTab('schedule')}
-            className={`px-4 py-2 text-xs md:text-sm font-bold border-b-2 transition-all ${
-              activeTab === 'schedule' ? 'border-primary text-primary' : 'border-transparent text-slate hover:text-ink'
-            }`}
-          >
-            Working Schedule Grid
-          </button>
-          <button
-            onClick={() => setActiveTab('amara')}
-            className={`px-4 py-2 text-xs md:text-sm font-bold border-b-2 transition-all ${
-              activeTab === 'amara' ? 'border-primary text-primary' : 'border-transparent text-slate hover:text-ink'
-            }`}
-          >
-            Amara Chen Scenario
-          </button>
-        </div>
-
-        {/* Feature Preview Card */}
-        <Card className="p-6 md:p-8 bg-white border border-border shadow-md">
-          {activeTab === 'kanban' && (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-ink">Kanban & List Employee Directory</h3>
-                  <p className="text-xs text-slate">Filter by department, job position, or live search with instant Smart Stat navigation.</p>
-                </div>
-                <Button variant="primary" size="sm" onClick={() => navigate('/employees')}>
-                  Open Directory
-                </Button>
+          <div className="hero-inner">
+            {/* Left Column: Modern High-Impact Copy */}
+            <div className="hero-copy">
+              <div className="badge-modern reveal-el">
+                <span className="live-ping-dot"></span>
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                <span>Automated Headcount-to-Payroll Intelligence</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
-                <div className="p-4 border border-border rounded-lg bg-canvas flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary text-white font-bold flex items-center justify-center">AC</div>
-                  <div>
-                    <h4 className="text-sm font-bold text-ink">Amara Chen</h4>
-                    <span className="text-xs text-slate">Sales Associate · Sales Dept</span>
-                    <div className="mt-1"><Badge status="active" /></div>
+              <h1 className="reveal-el hero-title-modern">
+                Reconcile <span className="text-highlight">Headcount</span>,{' '}
+                <span className="text-highlight">Contracts</span> &amp;{' '}
+                <span className="text-highlight">Payroll</span> in{' '}
+                <span className="hero-gradient-text">One Connected Flow</span>.
+              </h1>
+
+              <p className="hero-sub-modern reveal-el">
+                Eliminate fragmented spreadsheets and sync errors. PeoplePay360 connects{' '}
+                <strong>employee profiles</strong>, <strong>contract overlap guards</strong>,{' '}
+                <strong>shift patterns</strong>, and <strong>live attendance logs</strong> directly into{' '}
+                <strong>rule-sequenced, audit-proof payslips</strong> — in one unified pipeline.
+              </p>
+
+              <div className="hero-ctas reveal-el">
+                <button
+                  className="landing-btn btn-primary btn-lg magnetic shadow-glow"
+                  onClick={() => navigate('/login')}
+                >
+                  <span>Launch Platform</span>
+                  <ArrowRight className="w-4 h-4 arrow" />
+                </button>
+
+                <button
+                  className="landing-btn btn-ghost btn-lg magnetic"
+                  onClick={() => navigate('/login')}
+                >
+                  <KeyRound className="w-4 h-4 text-primary" />
+                  <span>Sign In with Demo Roles</span>
+                </button>
+              </div>
+
+              {/* High-Impact Value Metric Pills */}
+              <div className="hero-feature-pills reveal-el">
+                <div className="feat-pill">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  <span><strong>100%</strong> Rule Accuracy</span>
+                </div>
+                <div className="feat-pill">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                  <span><strong>Zero Overlap</strong> Guard</span>
+                </div>
+                <div className="feat-pill">
+                  <Lock className="w-3.5 h-3.5 text-primary" />
+                  <span><strong>5-Tier</strong> RBAC Gated</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Product Introduction Video Simulation Component */}
+            <div className="hero-right-stage reveal-el">
+              <ProductDemoVideo />
+            </div>
+          </div>
+
+          <div className="scroll-cue">
+            <span>Scroll</span>
+            <span className="line"></span>
+          </div>
+        </section>
+
+        {/* KPI STRIP */}
+        <section className="kpi-strip">
+          <div className="kpi-grid">
+            <div className="kpi-card reveal-el">
+              <div className="kpi-top-row">
+                <div className="kpi-icon-pill">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <span className="kpi-value">
+                  <span className="count" data-count="100">
+                    0
+                  </span>
+                  %
+                </span>
+              </div>
+              <div className="kpi-label">Reconciliation Accuracy</div>
+              <div className="kpi-desc">Rule-by-rule verification, Basic through Net pay with zero error tolerance.</div>
+            </div>
+
+            <div className="kpi-card reveal-el">
+              <div className="kpi-top-row">
+                <div className="kpi-icon-pill">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <span className="kpi-value">
+                  <span className="count" data-count="5">
+                    0
+                  </span>{' '}
+                  Tiers
+                </span>
+              </div>
+              <div className="kpi-label">Enforced Role Matrix</div>
+              <div className="kpi-desc">Strict server-side RBAC from self-service employee up to system admin.</div>
+            </div>
+
+            <div className="kpi-card reveal-el">
+              <div className="kpi-top-row">
+                <div className="kpi-icon-pill">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div className="kpi-value">
+                  <span className="live-dot"></span>&nbsp;Live
+                </div>
+              </div>
+              <div className="kpi-label">Supabase Cloud Postgres</div>
+              <div className="kpi-desc">Centralized relational database, real-time presence &amp; payrun state.</div>
+            </div>
+
+            <div className="kpi-card reveal-el">
+              <div className="kpi-top-row">
+                <div className="kpi-icon-pill">
+                  <Users className="w-4 h-4" />
+                </div>
+                <span className="kpi-value">
+                  <span className="count" data-count="4">
+                    0
+                  </span>{' '}
+                  Squads
+                </span>
+              </div>
+              <div className="kpi-label">Squad Architecture</div>
+              <div className="kpi-desc">Conflict-free, modular feature isolation across HR, time-off, and payroll.</div>
+            </div>
+          </div>
+        </section>
+
+        {/* BENTO STACK FEATURES */}
+        <section id="stack" className="stack">
+          <div className="section-head reveal-el">
+            <span className="tag">
+              <Layers className="w-3.5 h-3.5" />
+              <span>Platform Modules</span>
+            </span>
+            <h2>One operational stack, six connected modules</h2>
+            <p>Every screen writes into the same chain — nothing lives in isolation.</p>
+          </div>
+
+          <div className="bento-grid">
+            {/* Employee Hub */}
+            <div className="landing-card card-light reveal-el">
+              <div className="card-icon">
+                <Users className="w-5 h-5 text-primary" />
+              </div>
+              <h3>Employee Hub &amp; Navigation</h3>
+              <p className="card-desc">
+                A centralized headcount directory with Kanban, list, and form views. Jump straight to contracts,
+                attendance, or time off from any profile.
+              </p>
+              <div className="mv-stats">
+                <span className="mv-chip">
+                  <FileText className="w-3.5 h-3.5" /> Contracts (2)
+                </span>
+                <span className="mv-chip">
+                  <Clock className="w-3.5 h-3.5" /> Attendance (98%)
+                </span>
+                <span className="mv-chip">
+                  <CalendarDays className="w-3.5 h-3.5" /> Time Off (3)
+                </span>
+              </div>
+            </div>
+
+            {/* Contract Management */}
+            <div className="landing-card card-dark reveal-el">
+              <div className="card-icon">
+                <FileSignature className="w-5 h-5 text-blue-400" />
+              </div>
+              <h3>Contract Management &amp; Overlap Guard</h3>
+              <p className="card-desc">
+                Full contract history per employee, with the active wage always resolved for the period in question.
+              </p>
+              <div className="mv-overlap">
+                <div className="mv-bar-row">
+                  <div className="mv-bar"></div>
+                  <div className="mv-bar b2"></div>
+                </div>
+                <span className="mv-flag">
+                  <ShieldCheck className="w-3.5 h-3.5 text-red-400" />
+                  <span>Concurrent active contract blocked</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Working Schedule */}
+            <div className="landing-card card-dark reveal-el">
+              <div className="card-icon">
+                <CalendarDays className="w-5 h-5 text-emerald-400" />
+              </div>
+              <h3>Working Schedule Pattern Builder</h3>
+              <p className="card-desc">
+                Build a Monday-to-Sunday pattern with start times, end times, and lunch breaks. Weekly hours total
+                themselves automatically.
+              </p>
+              <div className="mv-week">
+                <div>M</div>
+                <div>T</div>
+                <div>W</div>
+                <div>T</div>
+                <div>F</div>
+                <div className="weekend">S</div>
+                <div className="weekend">S</div>
+              </div>
+            </div>
+
+            {/* Attendance Widget */}
+            <div className="landing-card card-light reveal-el">
+              <div className="card-icon">
+                <Clock className="w-5 h-5 text-amber-500" />
+              </div>
+              <h3>Attendance &amp; Presence Widget</h3>
+              <p className="card-desc">
+                A check-in widget tracks time in real time, flags missed checkouts, and logs every manual supervisor
+                correction with an audit trail.
+              </p>
+              <div className="mv-timer">
+                <i></i>
+                <span id="timerText">{timerText}</span>
+              </div>
+            </div>
+
+            {/* Sequenced Payroll Engine */}
+            <div className="landing-card card-wide card-light reveal-el">
+              <div>
+                <div className="card-icon">
+                  <Calculator className="w-5 h-5 text-primary" />
+                </div>
+                <h3>Sequenced Payroll Engine &amp; Payruns</h3>
+                <p className="card-desc">
+                  A multi-step wizard walks through period and employee selection, then executes fixed, percentage,
+                  and formula rules in sequence — before printing verified payslips and emailing them in bulk.
+                </p>
+              </div>
+              <div className="mv-stepper-wrap">
+                <div className="mv-track">
+                  <div className="mv-track-fill" id="stepperFill" ref={stepperFillRef}></div>
+                </div>
+                <div className="mv-stepper">
+                  <div className="mv-step done">
+                    <div className="mv-dot">1</div>
+                    <span>Period</span>
+                  </div>
+                  <div className="mv-step done">
+                    <div className="mv-dot">2</div>
+                    <span>Employees</span>
+                  </div>
+                  <div className="mv-step">
+                    <div className="mv-dot">3</div>
+                    <span>Compute</span>
+                  </div>
+                  <div className="mv-step">
+                    <div className="mv-dot">4</div>
+                    <span>Payslips</span>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div className="p-4 border border-border rounded-lg bg-canvas flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-navy text-white font-bold flex items-center justify-center">SA</div>
-                  <div>
-                    <h4 className="text-sm font-bold text-ink">System Admin</h4>
-                    <span className="text-xs text-slate">Platform Administrator</span>
-                    <div className="mt-1"><Badge status="active" /></div>
+            {/* Dashboard & Analytics */}
+            <div className="landing-card card-wide card-dark reveal-el">
+              <div>
+                <div className="card-icon">
+                  <BarChart3 className="w-5 h-5 text-indigo-400" />
+                </div>
+                <h3>Live Payroll Dashboard &amp; Analytics</h3>
+                <p className="card-desc">
+                  Salary cost by department, net salary trends month over month, headcount variances, and instant alerts
+                  the moment an anomaly occurs.
+                </p>
+              </div>
+              <div className="mv-chart" id="miniChart" ref={miniChartRef}>
+                <div style={{ '--h': '40%' } as React.CSSProperties}></div>
+                <div style={{ '--h': '65%' } as React.CSSProperties}></div>
+                <div style={{ '--h': '50%' } as React.CSSProperties}></div>
+                <div style={{ '--h': '80%' } as React.CSSProperties}></div>
+                <div style={{ '--h': '60%' } as React.CSSProperties}></div>
+                <div style={{ '--h': '92%' } as React.CSSProperties}></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECURITY & ROLE ACCORDION */}
+        <section id="security" className="security">
+          <div className="section-head reveal-el">
+            <span className="tag">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Security &amp; RBAC</span>
+            </span>
+            <h2>Five tiers. Zero ambiguity.</h2>
+            <p>Permissions are strictly enforced at the backend query layer — not just hidden in the UI.</p>
+          </div>
+
+          <div className="role-matrix">
+            {/* TIER 1 */}
+            <div className={`role-card reveal-el ${activeRoleIndex === 0 ? 'active' : ''}`}>
+              <div
+                className="role-head"
+                onClick={() => setActiveRoleIndex(activeRoleIndex === 0 ? null : 0)}
+              >
+                <span className="role-tier tier-1">TIER 1</span>
+                <span className="role-name">Employee — Self Service</span>
+                <span className="role-teaser">Self-service profile, attendance &amp; time off</span>
+                <ChevronDown className="role-chevron" />
+              </div>
+              <div className="role-details-wrap">
+                <div className="role-details">
+                  <div className="role-details-inner">
+                    <div className="perm-col perm-allow">
+                      <h4>Authorized</h4>
+                      <ul>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>View own profile and contract records</span>
+                        </li>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Check in and out of attendance kiosk</span>
+                        </li>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Submit leave and time-off requests</span>
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="perm-col perm-deny">
+                      <h4>Denied</h4>
+                      <ul>
+                        <li>
+                          <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+                          <span>View other employees or department directory</span>
+                        </li>
+                        <li>
+                          <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+                          <span>Create or edit employment contracts</span>
+                        </li>
+                        <li>
+                          <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+                          <span>Access payroll or salary calculation screens</span>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
-
-                <div className="p-4 border border-border/60 rounded-lg bg-white flex flex-col justify-center items-center text-center p-6 border-dashed">
-                  <Plus className="w-6 h-6 text-slate mb-1" />
-                  <span className="text-xs font-semibold text-slate">Role-Gated Employee Creation</span>
-                </div>
               </div>
             </div>
-          )}
 
-          {activeTab === 'overlap' && (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-6 h-6 text-danger shrink-0" />
-                <div>
-                  <h3 className="text-lg font-bold text-ink">Contract Overlap Validation Rule</h3>
-                  <p className="text-xs text-slate">Prevents double-booking running contracts for the same employee over overlapping periods.</p>
-                </div>
+            {/* TIER 2 */}
+            <div className={`role-card reveal-el ${activeRoleIndex === 1 ? 'active' : ''}`}>
+              <div
+                className="role-head"
+                onClick={() => setActiveRoleIndex(activeRoleIndex === 1 ? null : 1)}
+              >
+                <span className="role-tier tier-2">TIER 2</span>
+                <span className="role-name">HR Manager</span>
+                <span className="role-teaser">Full people operations, no payroll access</span>
+                <ChevronDown className="role-chevron" />
               </div>
-
-              <div className="p-4 bg-danger-tint border border-danger/30 rounded-lg text-danger-text text-xs flex items-start gap-3">
-                <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold block">Validation Error Enforced</span>
-                  <span>Validation Error: Employee already has an active running contract (CNT-2026-001) covering the requested period. End the existing contract first before starting a new active contract.</span>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button variant="secondary" size="sm" onClick={() => navigate('/contracts')}>
-                  Try Contract Management
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'schedule' && (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-ink">Working Schedule Builder</h3>
-                  <p className="text-xs text-slate">Weekly pattern grid (Mon–Sun) with auto-calculated total weekly hours.</p>
-                </div>
-                <Badge status="approved">Auto-Computed 40h</Badge>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day) => (
-                  <div key={day} className="p-3 bg-canvas border border-border rounded-md font-semibold">
-                    <span className="text-slate block">{day}</span>
-                    <span className="text-ink font-bold block mt-1">09:00 - 17:00</span>
-                    <span className="text-[10px] text-primary block mt-0.5">7h + 1h break</span>
+              <div className="role-details-wrap">
+                <div className="role-details">
+                  <div className="role-details-inner">
+                    <div className="perm-col perm-allow">
+                      <h4>Authorized</h4>
+                      <ul>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Full CRUD on employees, contracts, schedules, attendance</span>
+                        </li>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Approve or reject time-off requests</span>
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="perm-col perm-deny">
+                      <h4>Denied</h4>
+                      <ul>
+                        <li>
+                          <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+                          <span>Payroll screens — strictly blocked with 403, even by direct URL</span>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
-                ))}
+                </div>
               </div>
             </div>
-          )}
 
-          {activeTab === 'amara' && (
-            <div className="flex flex-col gap-4">
-              <h3 className="text-lg font-bold text-ink">Amara Chen Lifecycle Scenario</h3>
-              <p className="text-xs text-slate">The 5-minute live-demo narrative exercising every system module in sequence.</p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-                {amaraTimeline.map((item, i) => (
-                  <div key={i} className="p-3 border border-border rounded-lg bg-canvas flex flex-col gap-1 text-xs">
-                    <span className="text-[10px] font-bold text-primary">{item.date}</span>
-                    <span className="font-bold text-ink">{item.title}</span>
-                    <span className="text-slate leading-relaxed">{item.desc}</span>
+            {/* TIER 3 */}
+            <div className={`role-card reveal-el ${activeRoleIndex === 2 ? 'active' : ''}`}>
+              <div
+                className="role-head"
+                onClick={() => setActiveRoleIndex(activeRoleIndex === 2 ? null : 2)}
+              >
+                <span className="role-tier tier-3">TIER 3</span>
+                <span className="role-name">HR Payroll User</span>
+                <span className="role-teaser">Executes payruns, cannot alter formula rules</span>
+                <ChevronDown className="role-chevron" />
+              </div>
+              <div className="role-details-wrap">
+                <div className="role-details">
+                  <div className="role-details-inner">
+                    <div className="perm-col perm-allow">
+                      <h4>Authorized</h4>
+                      <ul>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Full access to HR management modules</span>
+                        </li>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Create, compute, and confirm monthly payruns</span>
+                        </li>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Generate, print, and email bulk payslips</span>
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="perm-col perm-deny">
+                      <h4>Denied</h4>
+                      <ul>
+                        <li>
+                          <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+                          <span>Salary structures and rules — read-only access</span>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
-                ))}
+                </div>
               </div>
             </div>
-          )}
-        </Card>
-      </section>
 
-      {/* Role Permission Matrix Explorer */}
-      <section className="py-16 bg-white border-y border-border px-6 md:px-12">
-        <div className="max-w-6xl mx-auto flex flex-col gap-8">
-          <div className="text-center max-w-2xl mx-auto">
-            <Badge status="approved">Role-Based Security</Badge>
-            <h2 className="text-3xl font-extrabold text-ink mt-3">Interactive RBAC Permission Explorer</h2>
-            <p className="text-xs md:text-sm text-slate mt-2">
-              Click a role below to preview permissions enforced at the backend query layer.
+            {/* TIER 4 */}
+            <div className={`role-card reveal-el ${activeRoleIndex === 3 ? 'active' : ''}`}>
+              <div
+                className="role-head"
+                onClick={() => setActiveRoleIndex(activeRoleIndex === 3 ? null : 3)}
+              >
+                <span className="role-tier tier-4">TIER 4</span>
+                <span className="role-name">HR Payroll Manager</span>
+                <span className="role-teaser">Full rule engine, formula builder, and payrun authority</span>
+                <ChevronDown className="role-chevron" />
+              </div>
+              <div className="role-details-wrap">
+                <div className="role-details">
+                  <div className="role-details-inner">
+                    <div className="perm-col perm-allow">
+                      <h4>Authorized</h4>
+                      <ul>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Full access across HR and Payroll pipelines</span>
+                        </li>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Create and modify salary rules, allowances, and formulas</span>
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="perm-col perm-deny">
+                      <h4>Denied</h4>
+                      <ul>
+                        <li>
+                          <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+                          <span>Platform user management and credential assignments</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* TIER 5 */}
+            <div className={`role-card reveal-el ${activeRoleIndex === 4 ? 'active' : ''}`}>
+              <div
+                className="role-head"
+                onClick={() => setActiveRoleIndex(activeRoleIndex === 4 ? null : 4)}
+              >
+                <span className="role-tier tier-5">TIER 5</span>
+                <span className="role-name">System Administrator</span>
+                <span className="role-teaser">Platform configuration, role administration &amp; auditing</span>
+                <ChevronDown className="role-chevron" />
+              </div>
+              <div className="role-details-wrap">
+                <div className="role-details">
+                  <div className="role-details-inner">
+                    <div className="perm-col perm-allow">
+                      <h4>Authorized</h4>
+                      <ul>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Full system and database access</span>
+                        </li>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Create user accounts, grant and revoke system roles</span>
+                        </li>
+                        <li>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Platform security configuration &amp; audit logging</span>
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="perm-col perm-deny">
+                      <h4>Denied</h4>
+                      <ul>
+                        <li>
+                          <span className="text-xs text-slate-500 font-semibold">Unrestricted root access</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* STORY TIMELINE */}
+        <section id="story" className="story">
+          <div className="section-head reveal-el">
+            <span className="tag">
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span>Live Reconciliation Scenario</span>
+            </span>
+            <h2>The Amara Chen lifecycle walkthrough</h2>
+            <p>One employee's journey reconciled automatically from hire to resignation.</p>
+          </div>
+
+          <div className="timeline">
+            <div className="timeline-spine">
+              <div className="timeline-spine-fill" id="spineFill" ref={spineFillRef}></div>
+            </div>
+
+            <div className="timeline-node reveal-el">
+              <div className="timeline-dot"></div>
+              <span className="timeline-date">Jan 15, 2026 — Initial Hire</span>
+              <h3>Onboarded as Sales Associate</h3>
+              <p>Contract created at $4,500/month on a standard 40-hour weekly schedule pattern.</p>
+            </div>
+
+            <div className="timeline-node reveal-el">
+              <div className="timeline-dot"></div>
+              <span className="timeline-date">Jun 1, 2026 — Promotion</span>
+              <h3>Promoted to Store Supervisor</h3>
+              <p>Her previous contract closes May 31. The overlap check passes with zero conflict.</p>
+            </div>
+
+            <div className="timeline-node reveal-el">
+              <div className="timeline-dot"></div>
+              <span className="timeline-date">Sep 10, 2026 — Parental Leave</span>
+              <h3>Approved Paid Leave</h3>
+              <p>Drawn against her time-off allocation with basic salary preserved and verified.</p>
+            </div>
+
+            <div className="timeline-node reveal-el">
+              <div className="timeline-dot"></div>
+              <span className="timeline-date">Nov 20, 2026 — Resignation</span>
+              <h3>Prorated Final Payrun</h3>
+              <p>November payslip prorates automatically to day 20. December's payrun omits her entirely.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA BANNER */}
+        <section className="cta-banner">
+          <div className="cta-panel reveal-el">
+            <div className="cta-copy">
+              <h2>Ready to experience PeoplePay360?</h2>
+              <p>
+                Sign in with pre-seeded demo accounts, or test the role boundaries yourself live on the platform.
+              </p>
+              <button className="landing-btn btn-dark btn-lg magnetic" onClick={() => navigate('/login')}>
+                <span>Sign In to Dashboard</span>
+                <ArrowRight className="w-4 h-4 arrow" />
+              </button>
+            </div>
+            <div className="cta-visual">
+              <span className="cta-shape shape-a"></span>
+              <span className="cta-shape shape-b"></span>
+              <span className="cta-shape shape-c"></span>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* FOOTER */}
+      <footer className="landing-footer">
+        <div className="footer-inner">
+          <div className="footer-col">
+            <div className="brand">
+              <span className="brand-badge">P</span>
+              <span className="brand-text">
+                <strong>PeoplePay360</strong>
+                <small>HR &amp; Payroll Platform</small>
+              </span>
+            </div>
+            <p>
+              Reconciles headcount, contracts, schedules, attendance, and salary rules into one verified payslip — built
+              on a centralized Supabase Postgres database.
             </p>
           </div>
-
-          {/* Role Tabs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {(Object.keys(roleSpecs) as Array<keyof typeof roleSpecs>).map((roleKey) => (
-              <button
-                key={roleKey}
-                onClick={() => setSelectedRole(roleKey)}
-                className={`p-3.5 rounded-xl border text-left transition-all flex flex-col gap-1 ${
-                  selectedRole === roleKey
-                    ? 'border-primary bg-primary-light shadow-xs ring-2 ring-primary/20'
-                    : 'border-border bg-canvas hover:bg-white'
-                }`}
-              >
-                <span className="text-xs font-bold text-ink">{roleSpecs[roleKey].name}</span>
-                <span className="text-[10px] text-slate font-mono">{roleSpecs[roleKey].email}</span>
-              </button>
-            ))}
+          <div className="footer-col">
+            <h4>HR Modules</h4>
+            <ul>
+              <li>
+                <a href="#stack">Employee Directory</a>
+              </li>
+              <li>
+                <a href="#stack">Contract Management</a>
+              </li>
+              <li>
+                <a href="#stack">Working Schedules</a>
+              </li>
+            </ul>
           </div>
-
-          {/* Selected Role Active Card */}
-          <Card className="p-6 bg-canvas border border-border flex flex-col md:flex-row gap-6 items-start justify-between">
-            <div className="flex-1 flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-xl font-bold text-ink">{roleSpecs[selectedRole].name}</h3>
-                <Badge status={roleSpecs[selectedRole].badgeStatus}>
-                  {roleSpecs[selectedRole].badge}
-                </Badge>
-              </div>
-
-              <div className="flex flex-col gap-2 mt-2">
-                <span className="text-xs font-bold text-slate uppercase">Authorized Capabilities</span>
-                {roleSpecs[selectedRole].rights.map((right, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-xs text-ink font-semibold">
-                    <Check className="w-4 h-4 text-success shrink-0" />
-                    <span>{right}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {roleSpecs[selectedRole].denied.length > 0 && (
-              <div className="flex-1 flex flex-col gap-3 bg-white p-4 rounded-lg border border-border">
-                <span className="text-xs font-bold text-danger uppercase">Strictly Blocked / Restricted</span>
-                {roleSpecs[selectedRole].denied.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-xs text-slate">
-                    <X className="w-4 h-4 text-danger shrink-0" />
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
-      </section>
-
-      {/* Feature Modules Grid */}
-      <section className="py-20 px-6 md:px-12 max-w-7xl mx-auto w-full">
-        <div className="text-center max-w-2xl mx-auto mb-14">
-          <Badge status="info">Connected Operations</Badge>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-ink mt-3">Integrated HR & Payroll Stack</h2>
-          <p className="text-sm md:text-base text-slate mt-2">
-            Designed from the ground up around the Employee hub to keep the HR data chain connected end-to-end.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((f, idx) => {
-            const IconComponent = f.icon;
-            return (
-              <Card key={idx} className="flex flex-col gap-4 p-6 hover:border-primary transition-all">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-primary-light text-primary flex items-center justify-center font-bold shadow-xs">
-                    <IconComponent className="w-6 h-6" />
-                  </div>
-                  <span className="text-[11px] font-bold text-slate uppercase tracking-wider bg-canvas px-2.5 py-1 rounded-full border border-border">
-                    {f.squad}
-                  </span>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <h3 className="text-lg font-bold text-ink">{f.title}</h3>
-                  <p className="text-xs text-slate leading-relaxed">{f.description}</p>
-                </div>
-
-                <div className="pt-3 border-t border-border/60 flex items-center text-xs font-semibold text-primary">
-                  <span>Explore Feature</span>
-                  <ArrowRight className="w-3 h-3 ml-1" />
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Final Call to Action CTA */}
-      <section className="py-16 px-6 md:px-12 bg-gradient-to-r from-navy via-navy/95 to-primary-dark text-white text-center">
-        <div className="max-w-3xl mx-auto flex flex-col items-center gap-6">
-          <h2 className="text-3xl md:text-4xl font-extrabold">Ready to Experience PeoplePay360?</h2>
-          <p className="text-sm md:text-base text-gray-300">
-            Sign in with seeded demo credentials or test role boundaries live on the platform.
-          </p>
-          <Button variant="primary" size="lg" onClick={() => navigate('/login')} className="shadow-lg">
-            Sign In to Dashboard
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-navy text-gray-400 py-8 px-6 md:px-12 text-xs flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center font-bold text-white text-xs">
-            P
+          <div className="footer-col">
+            <h4>Time &amp; Payroll</h4>
+            <ul>
+              <li>
+                <a href="#stack">Attendance Logs</a>
+              </li>
+              <li>
+                <a href="#stack">Time Off &amp; Allocations</a>
+              </li>
+              <li>
+                <a href="#stack">Payrun Engine</a>
+              </li>
+            </ul>
           </div>
-          <span className="text-white font-semibold">PeoplePay360</span>
-          <span>© 2026 HR & Payroll Platform</span>
+          <div className="footer-col">
+            <h4>Platform</h4>
+            <ul>
+              <li>
+                <a href="#stack">Payroll Analytics</a>
+              </li>
+              <li>
+                <a href="#security">Role Access Control</a>
+              </li>
+              <li>
+                <a href="#stack">Supabase DB</a>
+              </li>
+            </ul>
+          </div>
         </div>
-
-        <div className="flex items-center gap-6">
-          <button onClick={() => navigate('/login')} className="hover:text-white transition-colors">
-            Login
-          </button>
-          <button onClick={() => navigate('/employees')} className="hover:text-white transition-colors">
-            Employees
-          </button>
-          <button onClick={() => navigate('/contracts')} className="hover:text-white transition-colors">
-            Contracts
-          </button>
-        </div>
+        <div className="footer-bottom">© 2026 PeoplePay360 Operations Platform. All rights reserved.</div>
       </footer>
     </div>
   );
