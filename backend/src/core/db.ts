@@ -271,45 +271,153 @@ export const initDb = async () => {
       );
     `);
 
-    // 2. Execute column migrations to guarantee pre-existing PostgreSQL tables have all required columns
-    await pool.query(`
-      ALTER TABLE contracts ADD COLUMN IF NOT EXISTS salary_structure_id VARCHAR(50);
+    // Helper to safely execute column migrations per statement without aborting remaining migrations
+    const safeAlter = async (sql: string) => {
+      try {
+        await pool.query(sql);
+      } catch (e: any) {
+        // Skip if column already exists or table structure matches
+      }
+    };
 
-      ALTER TABLE payruns ADD COLUMN IF NOT EXISTS name VARCHAR(100);
-      ALTER TABLE payruns ADD COLUMN IF NOT EXISTS structure_id VARCHAR(50);
-      ALTER TABLE payruns ADD COLUMN IF NOT EXISTS salary_structure_id VARCHAR(50);
-      ALTER TABLE payruns ADD COLUMN IF NOT EXISTS period_start DATE;
-      ALTER TABLE payruns ADD COLUMN IF NOT EXISTS period_end DATE;
-      ALTER TABLE payruns ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Draft';
-      ALTER TABLE payruns ADD COLUMN IF NOT EXISTS employee_count INT DEFAULT 0;
-      ALTER TABLE payruns ADD COLUMN IF NOT EXISTS total_gross NUMERIC(12, 2) DEFAULT 0;
-      ALTER TABLE payruns ADD COLUMN IF NOT EXISTS total_net NUMERIC(12, 2) DEFAULT 0;
+    // 2. Execute individual column migrations to guarantee all PostgreSQL tables have all required columns on any team machine
+    const columnAdditions = [
+      // Employees
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS private_email VARCHAR(150)",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_account VARCHAR(50)",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS date_of_joining DATE",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(50)",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100)",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_ifsc VARCHAR(50)",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS avatar_url TEXT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
 
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS salary_structure_id VARCHAR(50);
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS period_start DATE;
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS period_end DATE;
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS worked_days NUMERIC(5, 2) DEFAULT 22;
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS basic_wage NUMERIC(12, 2) DEFAULT 0;
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS gross_wage NUMERIC(12, 2) DEFAULT 0;
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS gross_salary NUMERIC(12, 2) DEFAULT 0;
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS total_deductions NUMERIC(12, 2) DEFAULT 0;
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS net_wage NUMERIC(12, 2) DEFAULT 0;
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS net_salary NUMERIC(12, 2) DEFAULT 0;
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Draft';
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS pdf_path TEXT;
-      ALTER TABLE payslips ADD COLUMN IF NOT EXISTS email_status VARCHAR(50) DEFAULT 'NOT_SENT';
+      // Users
+      "ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255)",
+      "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
+      "ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
 
-      ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS name VARCHAR(150);
-      ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS code VARCHAR(50);
-      ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS category VARCHAR(50);
-      ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS sequence INT DEFAULT 10;
-      ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS salary_rule_id VARCHAR(50);
-      ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS rule_id VARCHAR(50);
+      // Departments
+      "ALTER TABLE departments ADD COLUMN IF NOT EXISTS code VARCHAR(20)",
+      "ALTER TABLE departments ADD COLUMN IF NOT EXISTS manager_id VARCHAR(50)",
+      "ALTER TABLE departments ADD COLUMN IF NOT EXISTS parent_id VARCHAR(50)",
+      "ALTER TABLE departments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
 
-      UPDATE contracts SET salary_structure_id = 'struct_1' WHERE salary_structure_id IS NULL;
-      UPDATE contracts SET salary_structure_id = 'struct_3' WHERE employee_id = 'emp_amara';
-      UPDATE contracts SET salary_structure_id = 'struct_2' WHERE employee_id = 'emp_admin';
-    `);
+      // Contracts
+      "ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contract_name VARCHAR(150)",
+      "ALTER TABLE contracts ADD COLUMN IF NOT EXISTS salary_structure_id VARCHAR(50)",
+      "ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contract_ref VARCHAR(50)",
+      "ALTER TABLE contracts ADD COLUMN IF NOT EXISTS working_schedule_id VARCHAR(50)",
+      "ALTER TABLE contracts ADD COLUMN IF NOT EXISTS schedule_id VARCHAR(50)",
+      "ALTER TABLE contracts ADD COLUMN IF NOT EXISTS notes TEXT",
+      "ALTER TABLE contracts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+
+      // Time Off Types
+      "ALTER TABLE time_off_types ADD COLUMN IF NOT EXISTS approval_workflow VARCHAR(50) DEFAULT 'by_hr'",
+      "ALTER TABLE time_off_types ADD COLUMN IF NOT EXISTS requires_approval BOOLEAN DEFAULT TRUE",
+      "ALTER TABLE time_off_types ADD COLUMN IF NOT EXISTS affects_payroll BOOLEAN DEFAULT FALSE",
+      "ALTER TABLE time_off_types ADD COLUMN IF NOT EXISTS display_color VARCHAR(20) DEFAULT '#5B4FE9'",
+      "ALTER TABLE time_off_types ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+      "ALTER TABLE time_off_types ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+
+      // Time Off Allocations
+      "ALTER TABLE time_off_allocations ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+      "ALTER TABLE time_off_allocations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+
+      // Time Off Requests
+      "ALTER TABLE time_off_requests ADD COLUMN IF NOT EXISTS approved_by VARCHAR(50)",
+      "ALTER TABLE time_off_requests ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+      "ALTER TABLE time_off_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+
+      // Attendances
+      "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS attendance_date DATE",
+      "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS worked_minutes INT",
+      "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS overtime_minutes INT DEFAULT 0",
+      "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS status VARCHAR(50)",
+      "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS is_manual_correction BOOLEAN DEFAULT FALSE",
+      "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS is_manual_edit BOOLEAN DEFAULT FALSE",
+      "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS audit_note TEXT",
+      "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS notes TEXT",
+      "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+
+      // Working Schedules
+      "ALTER TABLE working_schedules ADD COLUMN IF NOT EXISTS total_hours_per_week NUMERIC(5, 2) DEFAULT 40.00",
+      "ALTER TABLE working_schedules ADD COLUMN IF NOT EXISTS hours_per_week NUMERIC(5, 2) DEFAULT 40.00",
+      "ALTER TABLE working_schedules ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+
+      // Working Schedule Days
+      "ALTER TABLE working_schedule_days ADD COLUMN IF NOT EXISTS break_hours NUMERIC(4, 2) DEFAULT 1.00",
+      "ALTER TABLE working_schedule_days ADD COLUMN IF NOT EXISTS computed_hours NUMERIC(4, 2) DEFAULT 7.00",
+
+      // Salary Structures
+      "ALTER TABLE salary_structures ADD COLUMN IF NOT EXISTS code VARCHAR(50)",
+      "ALTER TABLE salary_structures ADD COLUMN IF NOT EXISTS description TEXT",
+      "ALTER TABLE salary_structures ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
+      "ALTER TABLE salary_structures ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+
+      // Salary Rules
+      "ALTER TABLE salary_rules ADD COLUMN IF NOT EXISTS computation_method VARCHAR(50) DEFAULT 'Fixed'",
+      "ALTER TABLE salary_rules ADD COLUMN IF NOT EXISTS operation VARCHAR(50)",
+      "ALTER TABLE salary_rules ADD COLUMN IF NOT EXISTS basis VARCHAR(50)",
+      "ALTER TABLE salary_rules ADD COLUMN IF NOT EXISTS amount NUMERIC(12, 2)",
+      "ALTER TABLE salary_rules ADD COLUMN IF NOT EXISTS value NUMERIC(12, 4)",
+      "ALTER TABLE salary_rules ADD COLUMN IF NOT EXISTS formula TEXT",
+      "ALTER TABLE salary_rules ADD COLUMN IF NOT EXISTS condition_expression TEXT",
+      "ALTER TABLE salary_rules ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
+      "ALTER TABLE salary_rules ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+
+      // Payruns
+      "ALTER TABLE payruns ADD COLUMN IF NOT EXISTS name VARCHAR(100)",
+      "ALTER TABLE payruns ADD COLUMN IF NOT EXISTS structure_id VARCHAR(50)",
+      "ALTER TABLE payruns ADD COLUMN IF NOT EXISTS salary_structure_id VARCHAR(50)",
+      "ALTER TABLE payruns ADD COLUMN IF NOT EXISTS period_start DATE",
+      "ALTER TABLE payruns ADD COLUMN IF NOT EXISTS period_end DATE",
+      "ALTER TABLE payruns ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Draft'",
+      "ALTER TABLE payruns ADD COLUMN IF NOT EXISTS employee_count INT DEFAULT 0",
+      "ALTER TABLE payruns ADD COLUMN IF NOT EXISTS total_gross NUMERIC(12, 2) DEFAULT 0",
+      "ALTER TABLE payruns ADD COLUMN IF NOT EXISTS total_net NUMERIC(12, 2) DEFAULT 0",
+      "ALTER TABLE payruns ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+
+      // Payslips
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS contract_id VARCHAR(50)",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS salary_structure_id VARCHAR(50)",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS period_start DATE",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS period_end DATE",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS worked_days NUMERIC(5, 2) DEFAULT 22",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS basic_wage NUMERIC(12, 2) DEFAULT 0",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS gross_wage NUMERIC(12, 2) DEFAULT 0",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS gross_salary NUMERIC(12, 2) DEFAULT 0",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS total_deductions NUMERIC(12, 2) DEFAULT 0",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS net_wage NUMERIC(12, 2) DEFAULT 0",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS net_salary NUMERIC(12, 2) DEFAULT 0",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Draft'",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS pdf_path TEXT",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS email_status VARCHAR(50) DEFAULT 'NOT_SENT'",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS emailed_at TIMESTAMP WITH TIME ZONE",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+      "ALTER TABLE payslips ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+
+      // Payslip Lines
+      "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS salary_rule_id VARCHAR(50)",
+      "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS rule_id VARCHAR(50)",
+      "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS name VARCHAR(150)",
+      "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS code VARCHAR(50)",
+      "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS category VARCHAR(50)",
+      "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS sequence INT DEFAULT 10",
+      "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS amount NUMERIC(12, 2)",
+      "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS operation VARCHAR(50)",
+      "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS basis VARCHAR(50)",
+      "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS rule_value NUMERIC(12, 4)",
+    ];
+
+    for (const sql of columnAdditions) {
+      await safeAlter(sql);
+    }
+
+    // Default updates for salary structure ids
+    await safeAlter("UPDATE contracts SET salary_structure_id = 'struct_1' WHERE salary_structure_id IS NULL");
+    await safeAlter("UPDATE contracts SET salary_structure_id = 'struct_3' WHERE employee_id = 'emp_amara'");
+    await safeAlter("UPDATE contracts SET salary_structure_id = 'struct_2' WHERE employee_id = 'emp_admin'");
 
     // 3. Populate Seed Data safely using ON CONFLICT DO NOTHING
     await pool.query(`

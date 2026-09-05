@@ -44,10 +44,10 @@ router.get('/', authMiddleware, async (req: AuthenticatedRequest, res: Response)
   // Plain Employee RBAC scoping
   if (req.user?.roleId === 'employee' && req.user.employeeId) {
     conditions.push(`a.employee_id = $${params.length + 1}`);
-    params.push(Number(req.user.employeeId));
+    params.push(String(req.user.employeeId));
   } else if (employee_id) {
     conditions.push(`a.employee_id = $${params.length + 1}`);
-    params.push(Number(employee_id));
+    params.push(String(employee_id));
   }
 
   if (date) {
@@ -91,7 +91,7 @@ router.get('/current', authMiddleware, async (req: AuthenticatedRequest, res: Re
 
   const result = await query(
     `SELECT * FROM attendances WHERE employee_id = $1 AND check_out IS NULL ORDER BY check_in DESC LIMIT 1`,
-    [Number(empId)]
+    [String(empId)]
   );
 
   return res.json({ success: true, data: result.rows?.[0] || null });
@@ -109,7 +109,7 @@ router.post('/check-in', authMiddleware, async (req: AuthenticatedRequest, res: 
   // Verify no open check-in exists
   const existingRes = await query(
     `SELECT id FROM attendances WHERE employee_id = $1 AND check_out IS NULL`,
-    [Number(employee_id)]
+    [String(employee_id)]
   );
 
   if (existingRes.rows && existingRes.rows.length > 0) {
@@ -119,11 +119,12 @@ router.post('/check-in', authMiddleware, async (req: AuthenticatedRequest, res: 
     });
   }
 
+  const attId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
   const result = await query(
-    `INSERT INTO attendances (employee_id, check_in, is_manual_correction)
-     VALUES ($1, NOW(), false)
+    `INSERT INTO attendances (id, employee_id, check_in, is_manual_correction)
+     VALUES ($1, $2, NOW(), false)
      RETURNING *`,
-    [Number(employee_id)]
+    [attId, String(employee_id)]
   );
 
   return res.status(201).json({ success: true, data: result.rows?.[0] });
@@ -140,7 +141,7 @@ router.post('/check-out', authMiddleware, async (req: AuthenticatedRequest, res:
 
   const activeRes = await query(
     `SELECT * FROM attendances WHERE employee_id = $1 AND check_out IS NULL ORDER BY check_in DESC LIMIT 1`,
-    [Number(employee_id)]
+    [String(employee_id)]
   );
 
   if (!activeRes.rows || activeRes.rows.length === 0) {
@@ -157,7 +158,7 @@ router.post('/check-out', authMiddleware, async (req: AuthenticatedRequest, res:
   const result = await query(
     `UPDATE attendances SET check_out = NOW(), worked_hours = $1, overtime_hours = $2, updated_at = NOW()
      WHERE id = $3 RETURNING *`,
-    [workedHours, overtimeHours, currentRecord.id]
+    [workedHours, overtimeHours, String(currentRecord.id)]
   );
 
   return res.json({ success: true, data: result.rows?.[0] });
@@ -184,11 +185,12 @@ router.post('/', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll
     overtimeHours = computed.overtimeHours;
   }
 
+  const attId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
   const result = await query(
-    `INSERT INTO attendances (employee_id, check_in, check_out, worked_hours, overtime_hours, is_manual_correction, audit_note)
-     VALUES ($1, $2, $3, $4, $5, true, $6)
+    `INSERT INTO attendances (id, employee_id, check_in, check_out, worked_hours, overtime_hours, is_manual_correction, audit_note)
+     VALUES ($1, $2, $3, $4, $5, $6, true, $7)
      RETURNING *`,
-    [Number(employee_id), check_in, check_out || null, workedHours, overtimeHours,
+    [attId, String(employee_id), check_in, check_out || null, workedHours, overtimeHours,
      audit_note || `Manually created by ${req.user?.email}`]
   );
 
@@ -209,7 +211,7 @@ router.put('/:id', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payro
     });
   }
 
-  const existingRes = await query('SELECT * FROM attendances WHERE id = $1', [Number(id)]);
+  const existingRes = await query('SELECT * FROM attendances WHERE id = $1', [String(id)]);
   if (!existingRes.rows || existingRes.rows.length === 0) {
     return res.status(404).json({ success: false, error: { message: 'Attendance record not found.' } });
   }
@@ -235,7 +237,7 @@ router.put('/:id', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payro
        check_in = $1, check_out = $2, worked_hours = $3, overtime_hours = $4,
        is_manual_correction = true, audit_note = $5, updated_at = NOW()
      WHERE id = $6 RETURNING *`,
-    [newCheckIn, newCheckOut, workedHours, overtimeHours, fullAuditNote, Number(id)]
+    [newCheckIn, newCheckOut, workedHours, overtimeHours, fullAuditNote, String(id)]
   );
 
   return res.json({ success: true, data: result.rows?.[0] });
