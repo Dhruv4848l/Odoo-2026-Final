@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // PostgreSQL direct pool (Dev C)
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres';
+const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.iejfvpcbkulrbzkfbdfu:%24OdooHackathon420@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres';
 
 export const pool = new Pool({
   connectionString,
