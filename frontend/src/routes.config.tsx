@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, RouteObject } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Navbar } from './layouts/Navbar';
 import { SubNav } from './layouts/SubNav';
@@ -8,7 +8,12 @@ import { EmployeeKanbanPage } from './features/auth-employee/pages/EmployeeKanba
 import { EmployeeFormPage } from './features/auth-employee/pages/EmployeeFormPage';
 import { ContractListPage } from './features/auth-employee/pages/ContractListPage';
 import { SchedulePage } from './features/auth-employee/pages/SchedulePage';
-import { PlaceholderModulePage } from './features/placeholder/PlaceholderModulePage';
+import { AttendanceListPage } from './features/attendance-timeoff/pages/AttendanceListPage';
+import { PayrollDashboardPage } from './features/dashboard-reports/pages/PayrollDashboardPage';
+import { PayrunsListPage } from './features/payroll/pages/PayrunsListPage';
+import { PayrunProcessingPage } from './features/payroll/pages/PayrunProcessingPage';
+import { SalaryStructuresPage } from './features/payroll/pages/SalaryStructuresPage';
+import { payrollRoutes } from './features/payroll/payroll.routes';
 
 // Protected Layout Shell
 const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -21,7 +26,7 @@ const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
     <div className="min-h-screen bg-canvas flex flex-col">
       <Navbar />
       <SubNav />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 p-6 max-w-7xl mx-auto w-full">{children}</main>
     </div>
   );
 };
@@ -65,60 +70,48 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Dev B Module Placeholder */}
+      {/* Dev B Module */}
       <Route
         path="/attendance"
         element={
           <ProtectedLayout>
-            <PlaceholderModulePage
-              title="Attendance Management"
-              squad="Dev B — Time & Presence Squad"
-              description="Check-in/out widget, attendance logs & missing checkout flags"
-              icon="attendance"
-            />
-          </ProtectedLayout>
-        }
-      />
-      <Route
-        path="/timeoff"
-        element={
-          <ProtectedLayout>
-            <PlaceholderModulePage
-              title="Time Off & Allocations"
-              squad="Dev B — Time & Presence Squad"
-              description="Leave requests, balance tracking & approval workflows"
-              icon="timeoff"
-            />
+            <AttendanceListPage />
           </ProtectedLayout>
         }
       />
 
-      {/* Dev C Module Placeholder */}
+      {/* Dev C Modules */}
       <Route
         path="/payroll"
         element={
           <ProtectedLayout>
-            <PlaceholderModulePage
-              title="Payroll Engine & Payruns"
-              squad="Dev C — Payroll Engine Squad"
-              description="Salary structures, 2-step payrun wizard & payslip generation"
-              icon="payroll"
-            />
+            <PayrunsListPage />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/payroll/structures"
+        element={
+          <ProtectedLayout>
+            <SalaryStructuresPage />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/payroll/payruns/:id"
+        element={
+          <ProtectedLayout>
+            <PayrunProcessingPage />
           </ProtectedLayout>
         }
       />
 
-      {/* Dev D Module Placeholder */}
+      {/* Dev D Module */}
       <Route
         path="/dashboard"
         element={
           <ProtectedLayout>
-            <PlaceholderModulePage
-              title="Payroll Dashboard & Analytics"
-              squad="Dev D — Reporting & Platform Squad"
-              description="Live headcount, salary cost charts & proactive warnings"
-              icon="dashboard"
-            />
+            <PayrollDashboardPage />
           </ProtectedLayout>
         }
       />
@@ -128,3 +121,11 @@ export const AppRoutes: React.FC = () => {
     </Routes>
   );
 };
+
+export const routes: RouteObject[] = [
+  { path: '/', element: <Navigate to="/payroll" replace /> },
+  { path: '/employees', element: <EmployeeKanbanPage /> },
+  { path: '/attendance', element: <AttendanceListPage /> },
+  { path: '/dashboard', element: <PayrollDashboardPage /> },
+  ...payrollRoutes,
+];

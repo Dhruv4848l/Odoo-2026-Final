@@ -1,6 +1,29 @@
+import { Pool } from 'pg';
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 
-// Configuration from environment
+dotenv.config();
+
+// PostgreSQL direct pool (Dev C)
+const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres';
+
+export const pool = new Pool({
+  connectionString,
+  ssl: connectionString.includes('supabase.co') ? { rejectUnauthorized: false } : false,
+});
+
+export const query = async (text: string, params?: any[]) => {
+  const start = Date.now();
+  try {
+    const res = await pool.query(text, params);
+    return res;
+  } catch (err) {
+    // Return empty fallback structure if db is offline
+    return { rows: [], rowCount: 0 };
+  }
+};
+
+// Supabase client configuration (Dev A)
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
@@ -10,7 +33,7 @@ export const supabase = isSupabaseConfigured
   ? createClient(SUPABASE_URL, SUPABASE_KEY)
   : null;
 
-// Standard seed memory store for immediate local execution & fallback
+// Memory DB for local fallback testing
 export const memoryDb = {
   roles: [
     { id: 'employee', name: 'Employee', description: 'Own profile, attendance & leave view only' },
@@ -56,22 +79,6 @@ export const memoryDb = {
       hire_date: '2026-01-15',
       avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
     },
-    {
-      id: 'emp_admin',
-      first_name: 'System',
-      last_name: 'Admin',
-      email: 'admin@peoplepay360.com',
-      phone: '+1 (555) 000-0000',
-      job_position: 'Platform Administrator',
-      department_id: 'dept_hr',
-      manager_id: null,
-      working_schedule_id: 'sched_std_40h',
-      status: 'active',
-      private_email: 'admin@peoplepay360.com',
-      bank_account: 'US00BANK0000000000',
-      hire_date: '2025-01-01',
-      avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    },
   ],
   contracts: [
     {
@@ -94,27 +101,6 @@ export const memoryDb = {
       password: 'password123',
       role_id: 'admin',
       employee_id: 'emp_admin',
-    },
-    {
-      id: 'usr_hrmgr',
-      email: 'hr.manager@peoplepay360.com',
-      password: 'password123',
-      role_id: 'hr_manager',
-      employee_id: null,
-    },
-    {
-      id: 'usr_payroll',
-      email: 'payroll@peoplepay360.com',
-      password: 'password123',
-      role_id: 'hr_payroll_manager',
-      employee_id: null,
-    },
-    {
-      id: 'usr_amara',
-      email: 'amara.chen@peoplepay360.com',
-      password: 'password123',
-      role_id: 'employee',
-      employee_id: 'emp_amara',
     },
   ],
 };

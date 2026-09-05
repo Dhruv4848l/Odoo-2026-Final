@@ -12,8 +12,14 @@ export default {
           dark: '#3F35A8',    // Indigo-800
           light: '#EEF0FF',   // Indigo-50
         },
+        indigo: {
+          50: '#EEF0FF',
+          600: '#5B4FE9',
+          800: '#3F35A8',
+        },
         navy: {
           DEFAULT: '#14141F', // Ink Navy Dark Surface
+          900: '#14141F',
         },
         canvas: '#F6F6FB',    // Page Background
         ink: '#1A1A2E',       // Text Primary
