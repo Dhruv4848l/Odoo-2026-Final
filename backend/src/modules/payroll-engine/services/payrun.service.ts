@@ -1,7 +1,7 @@
-import { query, memoryDb } from '../../../core/db';
-import { SalaryStructureService } from './salary-structure.service';
-import { ProrationEngine } from './proration-engine';
-import { RuleEvaluator, EvaluationContext } from './rule-evaluator';
+import { query } from '../../../core/db.js';
+import { SalaryStructureService } from './salary-structure.service.js';
+import { ProrationEngine } from './proration-engine.js';
+import { RuleEvaluator, EvaluationContext } from './rule-evaluator.js';
 
 export interface Payrun {
   id: number;
@@ -36,21 +36,7 @@ export class PayrunService {
       LEFT JOIN salary_structures s ON p.structure_id = s.id
       ORDER BY p.id DESC
     `);
-    if (res.rows && res.rows.length > 0) return res.rows;
-
-    // Memory DB Fallback
-    return memoryDb.payruns.map((p: any) => {
-      const psList = memoryDb.payslips.filter((ps: any) => ps.payrun_id === p.id);
-      const totalGross = psList.reduce((acc: number, ps: any) => acc + (ps.gross_wage || 0), 0);
-      const totalNet = psList.reduce((acc: number, ps: any) => acc + (ps.net_wage || 0), 0);
-      return {
-        ...p,
-        status: p.status as 'Draft' | 'Validated' | 'Paid',
-        employee_count: psList.length || p.employee_count || 1,
-        total_gross: totalGross || p.total_gross || 0,
-        total_net: totalNet || p.total_net || 0,
-      };
-    });
+    return res.rows || [];
   }
 
   static async getPayrunById(id: number): Promise<Payrun | null> {
@@ -61,26 +47,23 @@ export class PayrunService {
       WHERE p.id = $1
     `, [id]);
 
-    let payrun: Payrun | null = null;
-    if (res.rows && res.rows.length > 0) {
-      payrun = res.rows[0];
-    } else {
-      // Memory DB Fallback
-      const found = memoryDb.payruns.find((p: any) => p.id === id);
-      if (!found) return null;
-      const psList = memoryDb.payslips.filter((ps: any) => ps.payrun_id === id);
-      const totalGross = psList.reduce((acc: number, ps: any) => acc + (ps.gross_wage || 0), 0);
-      const totalNet = psList.reduce((acc: number, ps: any) => acc + (ps.net_wage || 0), 0);
-      payrun = {
-        ...found,
-        status: found.status as 'Draft' | 'Validated' | 'Paid',
-        employee_count: psList.length || found.employee_count || 1,
-        total_gross: totalGross || found.total_gross || 0,
-        total_net: totalNet || found.total_net || 0,
-      };
+    if (!res.rows || res.rows.length === 0) return null;
+    
+    const payrun = res.rows[0];
+    
+    const statsRes = await query(`
+        SELECT COUNT(*)::int as employee_count,
+               COALESCE(SUM(gross_wage), 0)::float as total_gross,
+               COALESCE(SUM(net_wage), 0)::float as total_net
+        FROM payslips
+        WHERE payrun_id = $1
+    `, [id]);
+    
+    if (statsRes.rows && statsRes.rows[0]) {
+        payrun.employee_count = statsRes.rows[0].employee_count;
+        payrun.total_gross = statsRes.rows[0].total_gross;
+        payrun.total_net = statsRes.rows[0].total_net;
     }
-
-    if (!payrun) return null;
 
     // Compute pre-validation warnings
     payrun.warnings = await this.getPayrunWarnings(id);
@@ -102,28 +85,11 @@ export class PayrunService {
       [name, structure_id, period_start, period_end]
     );
 
-    let payrun: Payrun;
-    if (payrunRes.rows && payrunRes.rows[0]) {
-      payrun = payrunRes.rows[0];
-    } else {
-      // Memory DB Fallback
-      const newId = memoryDb.payruns.length + 1;
-      const struct = memoryDb.salary_structures.find((s: any) => s.id === structure_id);
-      payrun = {
-        id: newId,
-        name,
-        structure_id,
-        structure_name: struct?.name || 'Standard Monthly Salary',
-        period_start,
-        period_end,
-        status: 'Draft',
-        employee_count: selected_employee_ids.length || 1,
-        total_gross: 7100,
-        total_net: 5850,
-        created_at: new Date().toISOString(),
-      };
-      memoryDb.payruns.unshift(payrun as any);
+    if (!payrunRes.rows || payrunRes.rows.length === 0) {
+        throw new Error('Failed to create payrun');
     }
+    
+    const payrun = payrunRes.rows[0];
 
     // 2. Process initial computation for selected employees
     await this.computePayrun(payrun.id, selected_employee_ids);
@@ -144,7 +110,7 @@ export class PayrunService {
     const periodStart = new Date(payrun.period_start);
     const periodEnd = new Date(payrun.period_end);
 
-    const empIdsToProcess = selectedEmployeeIds && selectedEmployeeIds.length > 0 ? selectedEmployeeIds : [1];
+    const empIdsToProcess = selectedEmployeeIds && selectedEmployeeIds.length > 0 ? selectedEmployeeIds : [];
 
     for (const empId of empIdsToProcess) {
       // Find contract active on the last day of period
@@ -157,24 +123,17 @@ export class PayrunService {
         [empId, payrun.period_end]
       );
 
-      let rawContract = contractRes.rows && contractRes.rows.length > 0 ? contractRes.rows[0] : null;
+      const rawContract = contractRes.rows && contractRes.rows.length > 0 ? contractRes.rows[0] : null;
       if (!rawContract) {
-        rawContract = memoryDb.contracts[0] || {
-          id: 'ct_amara_1',
-          contract_ref: 'CNT-2026-001',
-          employee_id: 'emp_amara',
-          wage: 4500,
-          start_date: '2026-01-15',
-          end_date: null,
-          status: 'running',
-        };
+          // If no contract found, we skip
+          continue;
       }
 
       const contractDetails = {
         id: typeof rawContract.id === 'number' ? rawContract.id : 1,
         employee_id: typeof rawContract.employee_id === 'number' ? rawContract.employee_id : 1,
-        wage: Number(rawContract.wage || 4500),
-        start_date: new Date(rawContract.start_date || '2026-01-15'),
+        wage: Number(rawContract.wage || 0),
+        start_date: new Date(rawContract.start_date),
         end_date: rawContract.end_date ? new Date(rawContract.end_date) : null,
       };
 
@@ -185,7 +144,7 @@ export class PayrunService {
         0,
         0,
         0,
-        1
+        0
       );
 
       // Build evaluation context
@@ -195,7 +154,7 @@ export class PayrunService {
         GROSS: proration.proratedBasicWage,
         WORKED_DAYS: proration.workedDays,
         TOTAL_WORKING_DAYS: proration.totalWorkingDays,
-        OVERTIME_HOURS: 1,
+        OVERTIME_HOURS: 0,
         UNPAID_LEAVE_DAYS: 0,
       };
 
@@ -235,7 +194,7 @@ export class PayrunService {
       const grossWage = Math.round((proration.proratedBasicWage + totalAllowances) * 100) / 100;
       const netWage = Math.round((grossWage - totalDeductions) * 100) / 100;
 
-      // DB insert or memoryDb fallback
+      // DB insert
       const psRes = await query(
         `INSERT INTO payslips (payrun_id, employee_id, contract_id, basic_wage, gross_wage, net_wage, status)
          VALUES ($1, $2, $3, $4, $5, $6, 'Draft')
@@ -252,28 +211,6 @@ export class PayrunService {
             [payslipId, line.rule_id, line.amount]
           );
         }
-      } else {
-        // Memory DB Fallback
-        const psId = 1000 + memoryDb.payslips.length + 1;
-        const emp = memoryDb.employees.find((e: any) => String(e.id) === String(empId)) || memoryDb.employees[0];
-        const newPs = {
-          id: psId,
-          payrun_id: payrunId,
-          payrun_name: payrun.name,
-          period_start: payrun.period_start,
-          period_end: payrun.period_end,
-          employee_id: empId,
-          employee_name: emp ? `${emp.first_name} ${emp.last_name}` : 'Amara Chen',
-          department_name: 'Sales Operations',
-          job_position: emp?.job_position || 'Store Supervisor',
-          contract_wage: contractDetails.wage,
-          basic_wage: proration.proratedBasicWage,
-          gross_wage: grossWage,
-          net_wage: netWage,
-          status: payrun.status || 'Draft',
-          lines: computedLines,
-        };
-        memoryDb.payslips.push(newPs as any);
       }
     }
   }
@@ -288,10 +225,10 @@ export class PayrunService {
       [payrunId]
     );
 
-    const rows = psRes.rows && psRes.rows.length > 0 ? psRes.rows : memoryDb.payslips.filter((ps: any) => ps.payrun_id === payrunId);
+    const rows = psRes.rows || [];
 
     for (const row of rows) {
-      const name = row.employee_name || `${row.first_name || 'Amara'} ${row.last_name || 'Chen'}`;
+      const name = `${row.first_name || ''} ${row.last_name || ''}`.trim();
 
       if (Number(row.net_wage) < 0) {
         warnings.push({
@@ -311,18 +248,13 @@ export class PayrunService {
         });
       }
     }
-
+    
     return warnings;
   }
 
   static async updatePayrunStatus(payrunId: number, status: 'Draft' | 'Validated' | 'Paid'): Promise<Payrun> {
     await query('UPDATE payruns SET status = $1 WHERE id = $2', [status, payrunId]);
     await query('UPDATE payslips SET status = $1 WHERE payrun_id = $2', [status, payrunId]);
-
-    // Memory DB Fallback update
-    const p = memoryDb.payruns.find((pr: any) => pr.id === payrunId);
-    if (p) p.status = status;
-    memoryDb.payslips.filter((ps: any) => ps.payrun_id === payrunId).forEach((ps: any) => { ps.status = status; });
 
     const updated = await this.getPayrunById(payrunId);
     return updated!;
