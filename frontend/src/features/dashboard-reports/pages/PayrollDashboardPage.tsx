@@ -55,9 +55,16 @@ interface DeptOverview {
   avg_salary: number;
 }
 
-async function fetchDashboard(endpoint: string) {
+async function fetchDashboard(endpoint: string, period?: string, dept?: string) {
   const token = localStorage.getItem('token') || 'demo-token';
-  const res = await fetch(`${API_BASE}/dashboard/${endpoint}`, {
+  const params = new URLSearchParams();
+  if (period && period !== 'All Periods') params.append('period', period);
+  if (dept && dept !== 'All Departments') params.append('department', dept);
+  
+  const queryString = params.toString();
+  const url = `${API_BASE}/dashboard/${endpoint}${queryString ? `?${queryString}` : ''}`;
+  
+  const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const json = await res.json();
@@ -81,13 +88,13 @@ export const PayrollDashboardPage: React.FC = () => {
     setLoading(true);
     try {
       const [sum, alt, dept, trend, status, att, deptOv] = await Promise.all([
-        fetchDashboard('summary'),
-        fetchDashboard('alerts'),
-        fetchDashboard('salary-by-department'),
-        fetchDashboard('salary-trend'),
-        fetchDashboard('payslip-status'),
-        fetchDashboard('attendance-overview'),
-        fetchDashboard('department-overview'),
+        fetchDashboard('summary', periodFilter, deptFilter),
+        fetchDashboard('alerts', periodFilter, deptFilter),
+        fetchDashboard('salary-by-department', periodFilter, deptFilter),
+        fetchDashboard('salary-trend', periodFilter, deptFilter),
+        fetchDashboard('payslip-status', periodFilter, deptFilter),
+        fetchDashboard('attendance-overview', periodFilter, deptFilter),
+        fetchDashboard('department-overview', periodFilter, deptFilter),
       ]);
       setSummary(sum);
       setAlerts(alt || []);
@@ -192,6 +199,12 @@ export const PayrollDashboardPage: React.FC = () => {
       </div>
 
       {/* KPI Cards Row */}
+      {summary?.salary_fund.payslip_count === 0 && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-3 rounded-lg text-sm font-semibold flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-blue-600" />
+          No payroll data processed yet. Please run your first Payrun to see dashboard insights.
+        </div>
+      )}
       <div className="grid grid-cols-6 gap-4">
         <Card variant="kpi">
           <div className="flex items-center gap-2 mb-1">
