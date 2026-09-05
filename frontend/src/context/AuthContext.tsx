@@ -10,6 +10,9 @@ export interface User {
     last_name: string;
     email: string;
     job_position: string;
+    phone?: string;
+    private_email?: string;
+    bank_account?: string;
     avatar_url?: string;
   } | null;
 }

@@ -4,6 +4,7 @@ import { PayrunService } from './services/payrun.service.js';
 import { PayslipService } from './services/payslip.service.js';
 import { PdfGeneratorService } from './services/pdf-generator.service.js';
 import { AuthenticatedRequest } from '../../core/auth.js';
+import { broadcastEvent } from '../../core/websocket.js';
 
 export class PayrollController {
   // Salary Structures & Rules
@@ -36,6 +37,16 @@ export class PayrollController {
         return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'Structure name is required.' } });
       }
       const structure = await SalaryStructureService.createStructure(name, code, description);
+      broadcastEvent({
+        type: 'PAYROLL_UPDATE',
+        action: 'STRUCTURE_CREATED',
+        payload: structure,
+        notification: {
+          title: 'Salary Structure Added',
+          message: `Structure "${name}" created in Payroll Engine`,
+          type: 'info',
+        },
+      });
       res.status(201).json({ success: true, data: structure });
     } catch (err: any) {
       res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
@@ -49,6 +60,16 @@ export class PayrollController {
         return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'Structure ID, rule name, and code are required.' } });
       }
       const rule = await SalaryStructureService.addSalaryRule(req.body);
+      broadcastEvent({
+        type: 'PAYROLL_UPDATE',
+        action: 'RULE_ADDED',
+        payload: rule,
+        notification: {
+          title: 'Salary Rule Added',
+          message: `Rule "${name}" added with code ${code}`,
+          type: 'info',
+        },
+      });
       res.status(201).json({ success: true, data: rule });
     } catch (err: any) {
       res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
@@ -59,6 +80,16 @@ export class PayrollController {
     try {
       const id = String(req.params.id);
       const rule = await SalaryStructureService.updateSalaryRule(id, req.body);
+      broadcastEvent({
+        type: 'PAYROLL_UPDATE',
+        action: 'RULE_UPDATED',
+        payload: rule,
+        notification: {
+          title: 'Salary Rule Modified',
+          message: `Rule ${id} formula and sequence updated`,
+          type: 'info',
+        },
+      });
       res.json({ success: true, data: rule });
     } catch (err: any) {
       res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
@@ -104,6 +135,16 @@ export class PayrollController {
         period_end,
         selected_employee_ids
       );
+      broadcastEvent({
+        type: 'PAYROLL_UPDATE',
+        action: 'PAYRUN_CREATED',
+        payload: payrun,
+        notification: {
+          title: 'Payrun Initialized',
+          message: `Batch "${name}" created with ${(payrun as any)?.payslips_count || (payrun as any)?.payslips?.length || 0} employee payslips`,
+          type: 'info',
+        },
+      });
       res.status(201).json({ success: true, data: payrun });
     } catch (err: any) {
       res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
@@ -114,6 +155,16 @@ export class PayrollController {
     try {
       const id = String(req.params.id);
       const payrun = await PayrunService.updatePayrunStatus(id, 'Validated');
+      broadcastEvent({
+        type: 'PAYROLL_UPDATE',
+        action: 'PAYRUN_VALIDATED',
+        payload: payrun,
+        notification: {
+          title: 'Payrun Validated',
+          message: `Batch "${payrun.name}" validated by payroll officer`,
+          type: 'success',
+        },
+      });
       res.json({ success: true, data: payrun });
     } catch (err: any) {
       res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
@@ -124,6 +175,16 @@ export class PayrollController {
     try {
       const id = String(req.params.id);
       const payrun = await PayrunService.updatePayrunStatus(id, 'Paid');
+      broadcastEvent({
+        type: 'PAYROLL_UPDATE',
+        action: 'PAYRUN_PAID',
+        payload: payrun,
+        notification: {
+          title: 'Payroll Disbursed',
+          message: `Batch "${payrun.name}" marked as Paid. Bank disbursals released.`,
+          type: 'success',
+        },
+      });
       res.json({ success: true, data: payrun });
     } catch (err: any) {
       res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
@@ -186,7 +247,7 @@ export class PayrollController {
       }
 
       const pdfBuffer = await PdfGeneratorService.generatePayslipPdf(payslip);
-      
+
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename=payslip-${payslip.id}.pdf`);
       res.send(pdfBuffer);

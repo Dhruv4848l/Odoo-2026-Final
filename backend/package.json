@@ -16,7 +16,8 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "pdfkit": "^0.20.2",
-    "pg": "^8.11.5"
+    "pg": "^8.11.5",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -25,6 +26,7 @@
     "@types/node": "^20.11.24",
     "@types/pdfkit": "^0.17.6",
     "@types/pg": "^8.11.2",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3"
   }

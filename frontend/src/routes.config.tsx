@@ -37,7 +37,7 @@ const ProtectedLayout: React.FC<{ children: React.ReactNode; allowedRoles?: stri
     let fallbackPath = '/employees';
     if (normalizedRole === 'employee') fallbackPath = '/attendance';
     if (normalizedRole === 'hr_manager') fallbackPath = '/employees';
-    if (PAYROLL_ROLES.includes(normalizedRole)) fallbackPath = '/payroll';
+    if (PAYROLL_ROLES.includes(normalizedRole)) fallbackPath = '/dashboard';
 
     return <Navigate to={fallbackPath} replace />;
   }

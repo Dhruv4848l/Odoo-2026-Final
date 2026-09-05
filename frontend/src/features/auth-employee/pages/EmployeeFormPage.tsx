@@ -5,9 +5,29 @@ import { Card } from '../../../components/ui/Card';
 import { Input, Select } from '../../../components/ui/Input';
 import { SmartStatButton } from '../../../components/ui/SmartStatButton';
 import { apiRequest } from '../../../lib/api';
-import { FileText, Clock, Calendar, ArrowLeft, Save, ShieldAlert, Key, Shield, Plus, Building2 } from 'lucide-react';
+import { 
+  FileText, 
+  Clock, 
+  Calendar, 
+  ArrowLeft, 
+  Save, 
+  ShieldAlert, 
+  Key, 
+  Shield, 
+  Plus, 
+  Building2,
+  CheckCircle2,
+  Lock,
+  Sparkles,
+  Palette,
+  Check,
+  Shuffle,
+  X,
+  RefreshCw
+} from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getNormalizedRole } from '../../../layouts/SubNav';
+import { getAiAvatar, PRESET_VECTOR_AVATARS, PresetVectorAvatar } from '../../../lib/avatar';
 
 const DEFAULT_ROLES = [
   { id: 'employee', name: 'Employee', description: 'Own profile, attendance & time off view/actions only' },
@@ -29,7 +49,8 @@ export const EmployeeFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isNew = !id || id === 'new';
   const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
+  const auth = useAuth();
+  const currentUser = auth?.user;
   const currentNormalizedRole = getNormalizedRole(currentUser);
   const canManageRoles = ['admin', 'hr_manager', 'hr_payroll_manager'].includes(currentNormalizedRole);
 
@@ -39,6 +60,7 @@ export const EmployeeFormPage: React.FC = () => {
   const [rolesList, setRolesList] = useState<any[]>(DEFAULT_ROLES);
   const [structures, setStructures] = useState<any[]>([]);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Quick Add Modals State
@@ -52,6 +74,12 @@ export const EmployeeFormPage: React.FC = () => {
   const [schedDays, setSchedDays] = useState(DEFAULT_DAYS);
   const [creatingSched, setCreatingSched] = useState(false);
 
+  // Vector Avatar Selector State
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [avatarCategory, setAvatarCategory] = useState<string>('All');
+  const [customSeedInput, setCustomSeedInput] = useState('');
+  const [randomAvatars, setRandomAvatars] = useState<PresetVectorAvatar[]>([]);
+
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -64,6 +92,7 @@ export const EmployeeFormPage: React.FC = () => {
     wage: 4500,
     private_email: '',
     bank_account: '',
+    avatar_url: '',
     hire_date: new Date().toISOString().split('T')[0],
     role_id: 'employee',
     password: '',
@@ -83,6 +112,38 @@ export const EmployeeFormPage: React.FC = () => {
       fetchEmployee(id);
     }
   }, [id]);
+
+  const handleShuffleRandomVectors = () => {
+    const styles: ('avataaars' | 'lorelei' | 'bottts')[] = ['avataaars', 'lorelei', 'bottts'];
+    const names = ['Blaze', 'Zane', 'Sora', 'Vesper', 'Kira', 'Echo', 'Nyx', 'Orion'];
+    const newOnes: PresetVectorAvatar[] = names.map((name, i) => {
+      const randomSeed = `${name}_${Math.random().toString(36).substring(2, 6)}`;
+      const style = styles[i % styles.length];
+      return {
+        id: `rand_${Date.now()}_${i}`,
+        name: name,
+        category: 'Generated',
+        url: getAiAvatar(randomSeed, style),
+      };
+    });
+    setRandomAvatars(newOnes);
+  };
+
+  const handleApplyCustomSeed = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!customSeedInput.trim()) return;
+    const customUrl = getAiAvatar(customSeedInput.trim());
+    setFormData((prev) => ({ ...prev, avatar_url: customUrl }));
+  };
+
+  const handleSelectAvatar = (url: string) => {
+    setFormData((prev) => ({ ...prev, avatar_url: url }));
+  };
+
+  const allAvailableAvatars = [...PRESET_VECTOR_AVATARS, ...randomAvatars];
+  const displayedAvatars = avatarCategory === 'All'
+    ? allAvailableAvatars
+    : allAvailableAvatars.filter((a) => a.category.toLowerCase() === avatarCategory.toLowerCase());
 
   const fetchMetadata = async () => {
     try {
@@ -119,6 +180,7 @@ export const EmployeeFormPage: React.FC = () => {
         wage: emp.wage !== undefined ? emp.wage : 4500,
         private_email: emp.private_email || '',
         bank_account: emp.bank_account || '',
+        avatar_url: emp.avatar_url || '',
         hire_date: emp.hire_date || emp.date_of_joining || '',
         role_id: emp.role_id || emp.role?.id || 'employee',
         password: '',
@@ -180,9 +242,32 @@ export const EmployeeFormPage: React.FC = () => {
     }
   };
 
+  // Self-profile identification
+  const isSelf = Boolean(
+    (currentUser?.employee?.id && currentUser.employee.id === id) ||
+    (currentUser?.email && formData.email && currentUser.email.toLowerCase() === formData.email.toLowerCase()) ||
+    (!canManageRoles && !isNew)
+  );
+
+  // Granular RBAC Privilege Flags
+  const canEditWorkDetails = canManageRoles;
+  const canEditCompensation = canManageRoles;
+  const canEditLeaveBalances = canManageRoles;
+  const canEditRoles = canManageRoles;
+  const canEditPersonal = canManageRoles || isSelf;
+
+  const handleBack = () => {
+    if (!canManageRoles) {
+      navigate('/attendance');
+    } else {
+      navigate('/employees');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     setSaving(true);
 
     try {
@@ -191,13 +276,40 @@ export const EmployeeFormPage: React.FC = () => {
           method: 'POST',
           body: JSON.stringify(formData),
         });
+        navigate('/employees');
       } else {
         await apiRequest(`/employees/${id}`, {
           method: 'PUT',
           body: JSON.stringify(formData),
         });
+
+        // Sync local auth user state if editing self so navbar updates immediately
+        if (isSelf && currentUser) {
+          const updatedUser = {
+            ...currentUser,
+            employee: {
+              ...(currentUser.employee || {}),
+              first_name: formData.first_name,
+              last_name: formData.last_name,
+              phone: formData.phone,
+              private_email: formData.private_email,
+              bank_account: formData.bank_account,
+              avatar_url: formData.avatar_url,
+            }
+          };
+          localStorage.setItem('pp360_user', JSON.stringify(updatedUser));
+          if (auth?.login && auth?.token) {
+            auth.login(auth.token, updatedUser as any);
+          }
+        }
+
+        setSuccessMessage('Profile details successfully updated!');
+        setTimeout(() => setSuccessMessage(''), 4000);
+
+        if (!isSelf && canManageRoles) {
+          navigate('/employees');
+        }
       }
-      navigate('/employees');
     } catch (err: any) {
       setError(err.message || 'Failed to save employee profile');
     } finally {
@@ -216,14 +328,21 @@ export const EmployeeFormPage: React.FC = () => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button variant="secondary" size="sm" onClick={() => navigate('/employees')}>
+          <Button variant="secondary" size="sm" onClick={handleBack}>
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-ink">
-              {isNew ? 'New Employee Master' : `${formData.first_name} ${formData.last_name}`}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-ink">
+                {isNew ? 'New Employee Master' : `${formData.first_name} ${formData.last_name}`}
+              </h1>
+              {isSelf && (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">
+                  Your Account
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate">{formData.job_position || 'Employee Master Form'}</p>
           </div>
         </div>
@@ -231,12 +350,14 @@ export const EmployeeFormPage: React.FC = () => {
         {/* Smart Stat Buttons at top-right */}
         {!isNew && (
           <div className="flex items-center gap-2">
-            <SmartStatButton
-              icon={<FileText className="w-4 h-4" />}
-              value={smartStats.contracts_count}
-              label="Contracts"
-              onClick={() => navigate(`/contracts?employee_id=${id}`)}
-            />
+            {canManageRoles && (
+              <SmartStatButton
+                icon={<FileText className="w-4 h-4" />}
+                value={smartStats.contracts_count}
+                label="Contracts"
+                onClick={() => navigate(`/contracts?employee_id=${id}`)}
+              />
+            )}
             <SmartStatButton
               icon={<Clock className="w-4 h-4" />}
               value={smartStats.attendance_rate}
@@ -253,6 +374,13 @@ export const EmployeeFormPage: React.FC = () => {
         )}
       </div>
 
+      {successMessage && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-800 text-xs flex items-center gap-2 animate-fade-in shadow-sm">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span className="font-semibold">{successMessage}</span>
+        </div>
+      )}
+
       {error && (
         <div className="p-3 bg-danger-tint border border-danger/30 rounded-md text-danger-text text-xs flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 shrink-0" />
@@ -263,27 +391,191 @@ export const EmployeeFormPage: React.FC = () => {
       {/* Main Form Card */}
       <form onSubmit={handleSubmit}>
         <Card className="flex flex-col gap-6">
-          {/* Header Identity Row */}
-          <div className="flex items-start gap-4 pb-6 border-b border-border">
-            <div className="w-16 h-16 rounded-full bg-primary-light flex items-center justify-center font-bold text-primary text-xl border-2 border-primary/20 shrink-0">
-              {formData.first_name ? formData.first_name[0] : 'E'}
+          {/* Header Identity Row - AI Avatar */}
+          <div className="flex flex-col sm:flex-row sm:items-start gap-5 pb-6 border-b border-border">
+            <div className="flex flex-col items-center sm:items-start gap-2 shrink-0">
+              <div
+                onClick={() => canEditPersonal && setShowAvatarPicker(!showAvatarPicker)}
+                className={`relative group shrink-0 ${canEditPersonal ? 'cursor-pointer hover:scale-105' : ''} transition-all`}
+                title={canEditPersonal ? 'Click to select vector AI avatar' : undefined}
+              >
+                <img
+                  src={formData.avatar_url || getAiAvatar(formData.first_name || 'Employee')}
+                  alt={formData.first_name || 'Employee'}
+                  className="w-20 h-20 rounded-full object-cover border-2 border-primary/25 shadow-md bg-slate-100 transition-all group-hover:border-primary group-hover:ring-4 group-hover:ring-primary/15"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(formData.first_name || 'User')}`;
+                  }}
+                />
+                {canEditPersonal && (
+                  <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Palette className="w-5 h-5 text-white" />
+                  </div>
+                )}
+                <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-[#12141F] text-[#A5B4FC] border border-white/20 shadow-xs flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5 text-primary-200" />
+                  AI
+                </span>
+              </div>
+
+              {canEditPersonal && (
+                <button
+                  type="button"
+                  onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                  className="text-xs font-bold text-primary hover:text-primary-dark flex items-center gap-1.5 transition-colors px-3 py-1 rounded-full bg-primary/5 hover:bg-primary/10 border border-primary/20 cursor-pointer shadow-2xs active:scale-95"
+                >
+                  <Palette className="w-3.5 h-3.5" />
+                  <span>{showAvatarPicker ? 'Close Gallery' : 'Select Avatar'}</span>
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
               <Input
                 label="First Name *"
                 value={formData.first_name}
+                disabled={!canEditPersonal}
                 onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                 required
               />
               <Input
                 label="Last Name *"
                 value={formData.last_name}
+                disabled={!canEditPersonal}
                 onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                 required
               />
             </div>
           </div>
+
+          {/* Vector Avatar Selector Panel */}
+          {showAvatarPicker && canEditPersonal && (
+            <div className="p-5 bg-gradient-to-br from-[#F8F9FE] to-indigo-50/40 border border-primary/25 rounded-2xl flex flex-col gap-4 animate-fade-in shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Palette className="w-3.5 h-3.5" />
+                    </div>
+                    <h3 className="text-sm font-bold text-ink">Choose Vector AI Avatar</h3>
+                    <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full border border-primary/20">
+                      100% Vector SVG
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate mt-0.5">
+                    Click any vector avatar below to select it for your profile, or generate new ones.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleShuffleRandomVectors}
+                    className="px-3 py-1.5 rounded-full bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-ink flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95 hover:border-primary/40"
+                    title="Generate new random vector options"
+                  >
+                    <Shuffle className="w-3.5 h-3.5 text-primary" />
+                    <span>Shuffle New</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAvatarPicker(false)}
+                    className="p-1.5 rounded-full hover:bg-slate-200/80 text-slate-500 hover:text-ink transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Category Filter Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                {['All', 'Executive', 'Tech', 'Creative', 'Specialist', 'Modern', 'Bot'].map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setAvatarCategory(cat)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                      avatarCategory === cat
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'bg-white text-slate-600 hover:bg-slate-100/80 border border-slate-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Selectable Vector Grid */}
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 max-h-72 overflow-y-auto p-1">
+                {displayedAvatars.map((item) => {
+                  const currentActiveUrl = formData.avatar_url || getAiAvatar(formData.first_name || 'Employee');
+                  const isSelected = (formData.avatar_url === item.url) || (!formData.avatar_url && item.url === currentActiveUrl);
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => handleSelectAvatar(item.url)}
+                      className={`relative flex flex-col items-center p-2 rounded-2xl bg-white border transition-all cursor-pointer group hover:scale-105 active:scale-95 ${
+                        isSelected
+                          ? 'border-primary ring-2 ring-primary/30 shadow-md bg-primary/[0.04]'
+                          : 'border-slate-200 hover:border-primary/50 hover:shadow-xs'
+                      }`}
+                    >
+                      <img
+                        src={item.url}
+                        alt={item.name}
+                        className="w-12 h-12 rounded-full object-cover bg-slate-50 shrink-0 ring-1 ring-black/5"
+                      />
+                      <span className="text-[10px] font-semibold text-slate-700 truncate max-w-full mt-1.5 text-center">
+                        {item.name}
+                      </span>
+                      {isSelected && (
+                        <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center shadow-xs">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Custom Seed Input Row */}
+              <div className="pt-3 border-t border-slate-200/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleApplyCustomSeed();
+                  }}
+                  className="flex items-center gap-2 flex-1 max-w-md"
+                >
+                  <input
+                    type="text"
+                    placeholder="Or type custom vector seed (e.g. Leader, Star)..."
+                    value={customSeedInput}
+                    onChange={(e) => setCustomSeedInput(e.target.value)}
+                    className="flex-1 px-3.5 py-1.5 text-xs bg-white rounded-full border border-slate-300 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-ink"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!customSeedInput.trim()}
+                    className="px-4 py-1.5 rounded-full text-xs font-semibold bg-primary text-white hover:bg-primary-dark disabled:opacity-50 transition-all cursor-pointer shrink-0 shadow-2xs"
+                  >
+                    Generate
+                  </button>
+                </form>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const defaultUrl = getAiAvatar(formData.first_name || 'User');
+                    handleSelectAvatar(defaultUrl);
+                  }}
+                  className="text-xs text-slate-500 hover:text-primary font-medium underline transition-colors cursor-pointer self-start sm:self-center"
+                >
+                  Reset to default ({formData.first_name || 'Name'})
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Tab Selection */}
           <div className="flex border-b border-border gap-6">
@@ -329,105 +621,122 @@ export const EmployeeFormPage: React.FC = () => {
 
           {/* Tab 1: Work Information */}
           {activeTab === 'work' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Work Email *"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-              />
-              <Input
-                label="Work Phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-              <Input
-                label="Job Position *"
-                value={formData.job_position}
-                onChange={(e) => setFormData({ ...formData, job_position: e.target.value })}
-                required
-              />
-
-              {/* Department Select + Quick Add */}
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate">Department</label>
-                  {canManageRoles && (
-                    <button
-                      type="button"
-                      onClick={() => setShowDeptModal(true)}
-                      className="text-[11px] font-bold text-primary hover:underline flex items-center gap-0.5"
-                    >
-                      <Plus className="w-3 h-3" /> Add Dept
-                    </button>
-                  )}
+            <div className="flex flex-col gap-4">
+              {!canManageRoles && (
+                <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-md flex items-center gap-2 text-xs text-amber-900">
+                  <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Company organization, schedule, and salary structure are managed by HR &amp; Administrators. You can update your contact phone, private email, bank account, and password.</span>
                 </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Work Email *"
+                  type="email"
+                  value={formData.email}
+                  disabled={!canEditWorkDetails}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Work Phone"
+                  value={formData.phone}
+                  disabled={!canEditPersonal}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+                <Input
+                  label="Job Position *"
+                  value={formData.job_position}
+                  disabled={!canEditWorkDetails}
+                  onChange={(e) => setFormData({ ...formData, job_position: e.target.value })}
+                  required
+                />
+
+                {/* Department Select + Quick Add */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate">Department</label>
+                    {canManageRoles && (
+                      <button
+                        type="button"
+                        onClick={() => setShowDeptModal(true)}
+                        className="text-[11px] font-bold text-primary hover:underline flex items-center gap-0.5"
+                      >
+                        <Plus className="w-3 h-3" /> Add Dept
+                      </button>
+                    )}
+                  </div>
+                  <Select
+                    value={formData.department_id}
+                    disabled={!canEditWorkDetails}
+                    onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
+                    options={[
+                      { value: '', label: 'Select Department' },
+                      ...departments.map((d) => ({ value: d.id, label: `${d.name} (${d.code || 'DEPT'})` })),
+                    ]}
+                  />
+                </div>
+
+                {/* Working Schedule Select + Quick Add */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate">Working Schedule</label>
+                    {canManageRoles && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSchedModal(true)}
+                        className="text-[11px] font-bold text-primary hover:underline flex items-center gap-0.5"
+                      >
+                        <Plus className="w-3 h-3" /> Add Schedule
+                      </button>
+                    )}
+                  </div>
+                  <Select
+                    value={formData.working_schedule_id}
+                    disabled={!canEditWorkDetails}
+                    onChange={(e) => setFormData({ ...formData, working_schedule_id: e.target.value })}
+                    options={[
+                      { value: '', label: 'Select Working Schedule' },
+                      ...schedules.map((s) => ({ value: s.id, label: s.name })),
+                    ]}
+                  />
+                </div>
+
+                <Input
+                  label="Hire Date *"
+                  type="date"
+                  value={formData.hire_date}
+                  disabled={!canEditWorkDetails}
+                  onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
+                  required
+                />
+
                 <Select
-                  value={formData.department_id}
-                  onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
-                  options={[
-                    { value: '', label: 'Select Department' },
-                    ...departments.map((d) => ({ value: d.id, label: `${d.name} (${d.code || 'DEPT'})` })),
-                  ]}
+                  label="Associated Salary Structure *"
+                  value={formData.salary_structure_id}
+                  disabled={!canEditCompensation}
+                  onChange={(e) => setFormData({ ...formData, salary_structure_id: e.target.value })}
+                  required
+                  options={
+                    structures.length > 0
+                      ? structures.map((s) => ({ value: s.id, label: s.name }))
+                      : [
+                          { value: 'struct_1', label: 'Standard Monthly Salary' },
+                          { value: 'struct_2', label: 'Executive & Management Structure' },
+                          { value: 'struct_3', label: 'Sales & Performance Structure' },
+                        ]
+                  }
+                />
+
+                <Input
+                  label="Monthly Contract Base Wage ($) *"
+                  type="number"
+                  value={formData.wage}
+                  disabled={!canEditCompensation}
+                  onChange={(e) => setFormData({ ...formData, wage: Number(e.target.value) })}
+                  required
                 />
               </div>
-
-              {/* Working Schedule Select + Quick Add */}
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate">Working Schedule</label>
-                  {canManageRoles && (
-                    <button
-                      type="button"
-                      onClick={() => setShowSchedModal(true)}
-                      className="text-[11px] font-bold text-primary hover:underline flex items-center gap-0.5"
-                    >
-                      <Plus className="w-3 h-3" /> Add Schedule
-                    </button>
-                  )}
-                </div>
-                <Select
-                  value={formData.working_schedule_id}
-                  onChange={(e) => setFormData({ ...formData, working_schedule_id: e.target.value })}
-                  options={[
-                    { value: '', label: 'Select Working Schedule' },
-                    ...schedules.map((s) => ({ value: s.id, label: s.name })),
-                  ]}
-                />
-              </div>
-
-              <Input
-                label="Hire Date *"
-                type="date"
-                value={formData.hire_date}
-                onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
-                required
-              />
-
-              <Select
-                label="Associated Salary Structure *"
-                value={formData.salary_structure_id}
-                onChange={(e) => setFormData({ ...formData, salary_structure_id: e.target.value })}
-                required
-                options={
-                  structures.length > 0
-                    ? structures.map((s) => ({ value: s.id, label: s.name }))
-                    : [
-                        { value: 'struct_1', label: 'Standard Monthly Salary' },
-                        { value: 'struct_2', label: 'Executive & Management Structure' },
-                        { value: 'struct_3', label: 'Sales & Performance Structure' },
-                      ]
-                }
-              />
-
-              <Input
-                label="Monthly Contract Base Wage ($) *"
-                type="number"
-                value={formData.wage}
-                onChange={(e) => setFormData({ ...formData, wage: Number(e.target.value) })}
-                required
-              />
             </div>
           )}
 
@@ -438,11 +747,13 @@ export const EmployeeFormPage: React.FC = () => {
                 label="Private Email"
                 type="email"
                 value={formData.private_email}
+                disabled={!canEditPersonal}
                 onChange={(e) => setFormData({ ...formData, private_email: e.target.value })}
               />
               <Input
                 label="Bank Account (IBAN / Account No)"
                 value={formData.bank_account}
+                disabled={!canEditPersonal}
                 onChange={(e) => setFormData({ ...formData, bank_account: e.target.value })}
                 placeholder="US00BANK0000000000"
               />
@@ -455,10 +766,11 @@ export const EmployeeFormPage: React.FC = () => {
               <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-md flex items-start gap-3">
                 <Calendar className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                 <div className="text-xs text-ink space-y-1">
-                  <p className="font-bold text-primary">Initial Leave Balances Allocation</p>
+                  <p className="font-bold text-primary">Annual Leave Balances Allocation</p>
                   <p>
-                    Set initial annual leave days granted to this employee for the current calendar year.
-                    HR Managers can also modify these allocations anytime in <strong>Time Off Overview</strong>.
+                    {canManageRoles
+                      ? 'Set annual leave days granted to this employee for the current calendar year. HR Managers can also modify these allocations anytime in Time Off Overview.'
+                      : 'Your annual leave allocations are assigned by HR. To submit a leave request, visit the Time Off page.'}
                   </p>
                 </div>
               </div>
@@ -470,6 +782,7 @@ export const EmployeeFormPage: React.FC = () => {
                   min="0"
                   step="1"
                   value={formData.pto_days}
+                  disabled={!canEditLeaveBalances}
                   onChange={(e) => setFormData({ ...formData, pto_days: Number(e.target.value) })}
                   required
                 />
@@ -479,6 +792,7 @@ export const EmployeeFormPage: React.FC = () => {
                   min="0"
                   step="1"
                   value={formData.sick_days}
+                  disabled={!canEditLeaveBalances}
                   onChange={(e) => setFormData({ ...formData, sick_days: Number(e.target.value) })}
                   required
                 />
@@ -492,10 +806,11 @@ export const EmployeeFormPage: React.FC = () => {
               <div className="p-4 bg-primary-light/50 border border-primary/20 rounded-md flex items-start gap-3">
                 <Shield className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                 <div className="text-xs text-ink space-y-1">
-                  <p className="font-bold text-primary">System Authentication & RBAC Governance</p>
+                  <p className="font-bold text-primary">System Authentication &amp; Security</p>
                   <p>
-                    Assigning a <strong>Role</strong> and <strong>Login Password</strong> generates a user account
-                    linked to this employee. They can sign in immediately using their Work Email (<code>{formData.email || 'employee@email.com'}</code>).
+                    {canManageRoles
+                      ? 'Assigning a Role and Login Password generates or updates authentication and permissions for this user.'
+                      : 'Your system role is managed by Administrators. You can update your login password below.'}
                   </p>
                 </div>
               </div>
@@ -504,7 +819,7 @@ export const EmployeeFormPage: React.FC = () => {
                 <Select
                   label="System Role *"
                   value={formData.role_id}
-                  disabled={!canManageRoles}
+                  disabled={!canEditRoles}
                   onChange={(e) => setFormData({ ...formData, role_id: e.target.value })}
                   options={rolesList.map((r) => ({
                     value: r.id,
@@ -518,7 +833,7 @@ export const EmployeeFormPage: React.FC = () => {
                   value={formData.password}
                   placeholder={isNew ? 'password123' : '••••••••'}
                   required={isNew}
-                  disabled={!canManageRoles}
+                  disabled={!canEditPersonal}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
               </div>
@@ -535,7 +850,7 @@ export const EmployeeFormPage: React.FC = () => {
 
           {/* Footer Form Action Buttons */}
           <div className="pt-4 border-t border-border flex justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => navigate('/employees')}>
+            <Button type="button" variant="secondary" onClick={handleBack}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={saving}>

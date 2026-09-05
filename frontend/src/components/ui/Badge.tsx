@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type BadgeVariant = 'positive' | 'neutral' | 'warning' | 'danger' | 'info';
+export type BadgeVariant = 'positive' | 'neutral' | 'warning' | 'danger' | 'info' | 'violet';
 
 export interface BadgeProps {
   status?: string;
@@ -21,14 +21,14 @@ export const Badge: React.FC<BadgeProps> = ({
   
   if (!variant && status) {
     const s = status.toLowerCase();
-    if (['active', 'approved', 'paid', 'present', 'running', 'done', 'success'].includes(s)) {
+    if (['active', 'approved', 'paid', 'present', 'running', 'done', 'success', 'cleared'].includes(s)) {
       effectiveVariant = 'positive';
-    } else if (['pending', 'to approve', 'to_approve', 'warning', 'unsent'].includes(s)) {
+    } else if (['pending', 'to approve', 'to_approve', 'warning', 'unsent', 'in review', 'draft'].includes(s)) {
       effectiveVariant = 'warning';
-    } else if (['draft'].includes(s)) {
-      effectiveVariant = 'neutral';
-    } else if (['absent', 'refused', 'expired', 'overdue', 'duplicate', 'failed', 'terminated'].includes(s)) {
+    } else if (['absent', 'refused', 'expired', 'overdue', 'duplicate', 'failed', 'terminated', 'missing'].includes(s)) {
       effectiveVariant = 'danger';
+    } else if (['computed', 'active selection', 'in progress'].includes(s)) {
+      effectiveVariant = 'violet';
     } else if (['viewed', 'validated', 'info'].includes(s)) {
       effectiveVariant = 'info';
     }
@@ -39,29 +39,33 @@ export const Badge: React.FC<BadgeProps> = ({
 
   switch (effectiveVariant) {
     case 'positive':
-      styleClasses = 'bg-[#DCFCE7] text-[#16A34A] border border-emerald-200';
-      dotColorClass = 'bg-[#16A34A]';
+      styleClasses = 'bg-emerald-50 text-emerald-700 border border-emerald-200/80';
+      dotColorClass = 'bg-[#10B981]';
       break;
     case 'neutral':
-      styleClasses = 'bg-[#F1F5F9] text-[#64748B] border border-slate-200';
-      dotColorClass = 'bg-[#64748B]';
+      styleClasses = 'bg-[#F2F3F8] text-[#5A5D72] border border-[#E2E8F0]';
+      dotColorClass = 'bg-[#94A3B8]';
       break;
     case 'warning':
-      styleClasses = 'bg-[#FEF3C7] text-[#D97706] border border-amber-200';
-      dotColorClass = 'bg-[#D97706]';
+      styleClasses = 'bg-amber-50 text-amber-700 border border-amber-200/80';
+      dotColorClass = 'bg-[#F59E0B]';
       break;
     case 'danger':
-      styleClasses = 'bg-[#FEE2E2] text-[#DC2626] border border-red-200';
-      dotColorClass = 'bg-[#DC2626]';
+      styleClasses = 'bg-red-50 text-red-700 border border-red-200/80';
+      dotColorClass = 'bg-[#EF4444]';
+      break;
+    case 'violet':
+      styleClasses = 'bg-[#E1E0FF] text-[#4044CE] border border-[#C0C1FF]';
+      dotColorClass = 'bg-[#5A5FE8]';
       break;
     case 'info':
-      styleClasses = 'bg-[#DBEAFE] text-[#2563EB] border border-blue-200';
-      dotColorClass = 'bg-[#2563EB]';
+      styleClasses = 'bg-cyan-50 text-cyan-700 border border-cyan-200/80';
+      dotColorClass = 'bg-[#06B6D4]';
       break;
   }
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${styleClasses} ${className}`}>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold tracking-tight shadow-sm ${styleClasses} ${className}`}>
       {showDot && <span className={`w-1.5 h-1.5 rounded-full ${dotColorClass}`} />}
       {children || status}
     </span>

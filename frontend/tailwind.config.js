@@ -8,43 +8,82 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#5B4FE9', // Indigo-600
-          dark: '#3F35A8',    // Indigo-800
-          light: '#EEF0FF',   // Indigo-50
+          DEFAULT: '#5A5FE8',
+          hover: '#4C51DE',
+          dark: '#4044CE',
+          light: '#F4F5FF',
+          container: '#5A5FE8',
+          fixed: '#E1E0FF',
+          'fixed-dim': '#C0C1FF',
         },
-        indigo: {
-          50: '#EEF0FF',
-          600: '#5B4FE9',
-          800: '#3F35A8',
+        midnight: {
+          DEFAULT: '#12141F',
+          dock: '#1B1E30',
+          deck: '#171A2A',
+          card: '#1E2238',
+          border: 'rgba(255, 255, 255, 0.08)',
         },
         navy: {
-          DEFAULT: '#14141F', // Ink Navy Dark Surface
-          900: '#14141F',
+          DEFAULT: '#12141F',
+          900: '#12141F',
         },
-        canvas: '#F6F6FB',    // Page Background
-        ink: '#1A1A2E',       // Text Primary
-        slate: '#6B7280',     // Text Secondary
-        mist: '#9CA3AF',      // Text Muted
-        border: '#E5E7EB',
+        surface: {
+          DEFAULT: '#F8F9FE',
+          dim: '#D8DADF',
+          bright: '#F8F9FE',
+          card: '#FFFFFF',
+          container: '#EDEEF3',
+          'container-low': '#F2F3F8',
+          'container-lowest': '#FFFFFF',
+          'container-high': '#E7E8ED',
+          'container-highest': '#E1E2E7',
+        },
+        canvas: '#F8F9FE',
+        'on-surface': '#191C1F',
+        'on-surface-variant': '#5A5D72',
+        ink: '#191C1F',
+        slate: '#5A5D72',
+        mist: '#94A3B8',
+        border: '#E2E8F0',
+        emerald: {
+          DEFAULT: '#10B981',
+          tint: 'rgba(16, 185, 129, 0.12)',
+          text: '#059669',
+        },
         success: {
-          DEFAULT: '#22C55E',
-          tint: '#DCFCE7',
-          text: '#16A34A',
+          DEFAULT: '#10B981',
+          tint: '#ECFDF5',
+          text: '#059669',
         },
-        warning: {
-          DEFAULT: '#F59E0B',
-          tint: '#FEF3C7',
-          text: '#D97706',
+        coral: {
+          DEFAULT: '#EF4444',
+          tint: 'rgba(239, 68, 68, 0.12)',
+          text: '#DC2626',
         },
         danger: {
           DEFAULT: '#EF4444',
-          tint: '#FEE2E2',
+          tint: '#FEF2F2',
           text: '#DC2626',
         },
+        warning: {
+          DEFAULT: '#F59E0B',
+          tint: '#FFFBEB',
+          text: '#D97706',
+        },
+        amber: {
+          DEFAULT: '#F59E0B',
+          tint: 'rgba(245, 158, 11, 0.12)',
+          text: '#D97706',
+        },
         info: {
-          DEFAULT: '#3B82F6',
-          tint: '#DBEAFE',
-          text: '#2563EB',
+          DEFAULT: '#06B6D4',
+          tint: '#ECFEFF',
+          text: '#0891B2',
+        },
+        cyan: {
+          DEFAULT: '#06B6D4',
+          tint: 'rgba(6, 182, 212, 0.12)',
+          text: '#0891B2',
         },
       },
       borderRadius: {
@@ -52,16 +91,25 @@ export default {
         'md': '12px',
         'lg': '16px',
         'xl': '20px',
+        '2xl': '24px',
+        '3xl': '32px',
         'full': '9999px',
       },
       boxShadow: {
-        'sm': '0 1px 3px rgba(16, 24, 40, 0.06)',
-        'md': '0 4px 10px rgba(16, 24, 40, 0.10)',
-        'lg': '0 10px 30px rgba(16, 24, 40, 0.18)',
+        'sm': '0 2px 6px -1px rgba(27, 30, 48, 0.04)',
+        'md': '0 4px 14px rgba(27, 30, 48, 0.08)',
+        'lg': '0 12px 30px -4px rgba(27, 30, 48, 0.12)',
+        'fintech': '0 4px 20px -2px rgba(90, 95, 232, 0.06), 0 2px 6px -1px rgba(27, 30, 48, 0.03)',
+        'fintech-hover': '0 16px 36px -4px rgba(90, 95, 232, 0.15), 0 6px 18px -2px rgba(27, 30, 48, 0.07)',
+        'card-hover': '0 18px 36px -6px rgba(90, 95, 232, 0.13), 0 4px 12px -1px rgba(27, 30, 48, 0.05)',
+        'glow': '0 8px 24px -4px rgba(90, 95, 232, 0.40)',
+        'glow-sm': '0 4px 14px -2px rgba(90, 95, 232, 0.30)',
+        'glow-hover': '0 12px 32px -4px rgba(90, 95, 232, 0.55)',
+        'deck': '0 20px 40px -8px rgba(18, 20, 31, 0.45)',
       },
       fontFamily: {
-        sans: ['Inter', 'Calibri', 'system-ui', 'sans-serif'],
-        mono: ['Consolas', 'monospace'],
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'Consolas', 'monospace'],
       },
     },
   },

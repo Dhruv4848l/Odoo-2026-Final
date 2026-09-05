@@ -415,6 +415,8 @@ export const initDb = async () => {
       "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS operation VARCHAR(50)",
       "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS basis VARCHAR(50)",
       "ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS rule_value NUMERIC(12, 4)",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS avatar_url TEXT",
+      "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT",
     ];
 
     for (const sql of columnAdditions) {

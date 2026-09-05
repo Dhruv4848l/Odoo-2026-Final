@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { query } from '../../core/db.js';
 import { authMiddleware, requireRole, AuthenticatedRequest } from '../../core/auth.js';
+import { broadcastEvent } from '../../core/websocket.js';
 
 const router = Router();
 
@@ -375,6 +376,17 @@ router.post('/requests', authMiddleware, async (req: AuthenticatedRequest, res: 
     [reqId, String(employee_id), String(time_off_type_id), start_date, end_date, reqAmount]
   );
 
+  broadcastEvent({
+    type: 'TIMEOFF_UPDATE',
+    action: 'REQUEST_SUBMITTED',
+    payload: result.rows?.[0],
+    notification: {
+      title: 'New Leave Request',
+      message: `${type?.name || 'Leave'} request for ${reqAmount} day(s) submitted for approval`,
+      type: 'info',
+    },
+  });
+
   return res.status(201).json({ success: true, data: result.rows?.[0] });
 });
 
@@ -411,6 +423,17 @@ router.post('/requests/:id/approve', authMiddleware, requireRole(['admin', 'hr_m
     [approverId, String(id)]
   );
 
+  broadcastEvent({
+    type: 'TIMEOFF_UPDATE',
+    action: 'REQUEST_APPROVED',
+    payload: result.rows?.[0],
+    notification: {
+      title: 'Leave Approved',
+      message: `Leave request (${request.start_date} to ${request.end_date}) approved`,
+      type: 'success',
+    },
+  });
+
   return res.json({ success: true, data: result.rows?.[0] });
 });
 
@@ -444,6 +467,17 @@ router.post('/requests/:id/refuse', authMiddleware, requireRole(['admin', 'hr_ma
      WHERE id = $2 RETURNING *`,
     [approverId, String(id)]
   );
+
+  broadcastEvent({
+    type: 'TIMEOFF_UPDATE',
+    action: 'REQUEST_REFUSED',
+    payload: result.rows?.[0],
+    notification: {
+      title: 'Leave Refused',
+      message: `Leave request (${request.start_date} to ${request.end_date}) refused`,
+      type: 'warning',
+    },
+  });
 
   return res.json({ success: true, data: result.rows?.[0] });
 });

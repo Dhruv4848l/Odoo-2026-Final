@@ -16,31 +16,31 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  let baseStyles = 'inline-flex items-center justify-center font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+  let baseStyles = 'inline-flex items-center justify-center font-semibold rounded-full transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-[#5A5FE8]/40 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100';
 
   let variantStyles = '';
   switch (variant) {
     case 'primary':
-      variantStyles = 'bg-[#5B4FE9] text-white rounded-full hover:bg-[#3F35A8] shadow-sm';
+      variantStyles = 'bg-[#5A5FE8] text-white hover:bg-[#4C51DE] shadow-[0_4px_16px_-2px_rgba(90,95,232,0.40)] hover:shadow-[0_6px_22px_-2px_rgba(90,95,232,0.55)]';
       break;
     case 'navy':
     case 'finalize':
-      variantStyles = 'bg-[#14141F] text-white rounded-full hover:bg-slate-800 shadow-sm';
+      variantStyles = 'bg-[#12141F] text-white hover:bg-[#1B1E30] border border-white/10 shadow-sm hover:shadow-md';
       break;
     case 'secondary':
-      variantStyles = 'bg-white border border-[#E5E7EB] text-[#1A1A2E] rounded-md hover:bg-slate-50 shadow-sm';
+      variantStyles = 'bg-white border border-[#E2E8F0] text-[#191C1F] hover:bg-[#F8F9FE] hover:border-slate-300 shadow-sm';
       break;
     case 'success':
-      variantStyles = 'bg-[#22C55E] text-white rounded-full hover:bg-emerald-600 shadow-sm';
+      variantStyles = 'bg-[#10B981] text-white hover:bg-[#059669] shadow-[0_4px_14px_-2px_rgba(16,185,129,0.35)]';
       break;
     case 'danger':
-      variantStyles = 'bg-white border border-[#EF4444] text-[#EF4444] rounded-full hover:bg-[#FEE2E2] shadow-sm';
+      variantStyles = 'bg-white border border-[#EF4444] text-[#EF4444] hover:bg-[#FEF2F2] shadow-sm';
       break;
     case 'ghost':
-      variantStyles = 'bg-transparent text-[#6B7280] rounded-md hover:bg-slate-100 hover:text-[#1A1A2E]';
+      variantStyles = 'bg-transparent text-[#5A5D72] hover:bg-[#EDEEF3] hover:text-[#191C1F]';
       break;
     case 'icon':
-      variantStyles = 'bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200 p-2';
+      variantStyles = 'bg-white border border-[#E2E8F0] text-[#5A5D72] hover:text-[#5A5FE8] hover:bg-[#F8F9FE] shadow-sm p-2';
       break;
   }
 
@@ -50,13 +50,13 @@ export const Button: React.FC<ButtonProps> = ({
   } else {
     switch (size) {
       case 'sm':
-        sizeStyles = 'h-[30px] px-3 text-xs';
+        sizeStyles = 'h-[32px] px-3.5 text-xs';
         break;
       case 'md':
-        sizeStyles = 'h-[38px] px-4 text-sm';
+        sizeStyles = 'h-[40px] px-5 text-sm';
         break;
       case 'lg':
-        sizeStyles = 'h-[44px] px-6 text-base';
+        sizeStyles = 'h-[46px] px-7 text-base';
         break;
     }
   }

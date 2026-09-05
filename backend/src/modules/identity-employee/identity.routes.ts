@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { query, memoryDb } from '../../core/db.js';
 import { generateToken, authMiddleware, requireRole, AuthenticatedRequest } from '../../core/auth.js';
+import { broadcastEvent } from '../../core/websocket.js';
 
 const router = Router();
 
@@ -129,6 +130,86 @@ router.get('/auth/me', authMiddleware, async (req: AuthenticatedRequest, res: Re
       role: { id: user.role_id, name: user.role_name },
       employee: employee || null,
     },
+  });
+});
+
+// Update Profile & Preferences
+router.put('/auth/profile', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const targetUserId = req.user?.userId || req.user?.id;
+  const userRole = req.user?.roleId || 'employee';
+  const isAdminOrHR = ['admin', 'hr_manager', 'hr_payroll_manager'].includes(userRole);
+
+  const {
+    first_name,
+    last_name,
+    phone,
+    private_email,
+    bank_account,
+    avatar_url,
+    department_id,
+    job_position,
+  } = req.body;
+
+  let empId = req.user?.employeeId;
+  if (!empId) {
+    const uRes = await query('SELECT employee_id FROM users WHERE id = $1', [targetUserId]);
+    empId = uRes.rows?.[0]?.employee_id;
+  }
+
+  let updatedEmp: any = null;
+  if (empId) {
+    if (isAdminOrHR) {
+      const q = await query(
+        `UPDATE employees SET
+           first_name = COALESCE($1, first_name),
+           last_name = COALESCE($2, last_name),
+           phone = COALESCE($3, phone),
+           private_email = COALESCE($4, private_email),
+           bank_account = COALESCE($5, bank_account),
+           avatar_url = COALESCE($6, avatar_url),
+           department_id = COALESCE($7, department_id),
+           job_position = COALESCE($8, job_position),
+           updated_at = NOW()
+         WHERE id = $9 RETURNING *`,
+        [first_name, last_name, phone, private_email, bank_account, avatar_url, department_id, job_position, String(empId)]
+      );
+      updatedEmp = q.rows?.[0];
+    } else {
+      const q = await query(
+        `UPDATE employees SET
+           phone = COALESCE($1, phone),
+           private_email = COALESCE($2, private_email),
+           bank_account = COALESCE($3, bank_account),
+           avatar_url = COALESCE($4, avatar_url),
+           updated_at = NOW()
+         WHERE id = $5 RETURNING *`,
+        [phone, private_email, bank_account, avatar_url, String(empId)]
+      );
+      updatedEmp = q.rows?.[0];
+    }
+  }
+
+  if (avatar_url) {
+    await query('UPDATE users SET avatar_url = $1 WHERE id = $2', [avatar_url, targetUserId]);
+  }
+
+  broadcastEvent({
+    type: 'EMPLOYEE_UPDATE',
+    action: 'PROFILE_UPDATED',
+    payload: updatedEmp,
+    notification: {
+      title: 'Profile Updated',
+      message: `${updatedEmp?.first_name || 'User'} profile details updated`,
+      type: 'info',
+    }
+  });
+
+  return res.json({
+    success: true,
+    data: {
+      employee: updatedEmp,
+      message: 'Profile updated successfully',
+    }
   });
 });
 
@@ -445,14 +526,37 @@ router.post('/employees', authMiddleware, requireRole(['admin', 'hr_manager', 'h
   return res.status(201).json({ success: true, data: { ...newEmp, role_id: assignedRole, salary_structure_id: structId, wage: empWage, pto_days: grantedPto, sick_days: grantedSick } });
 });
 
-router.put('/employees/:id', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll_manager']), async (req, res) => {
+router.put('/employees/:id', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  const userRoleId = req.user?.roleId || '';
+  const isManager = ['admin', 'hr_manager', 'hr_payroll_manager'].includes(userRoleId);
+  const isSelf = String(req.user?.employeeId) === String(id);
+
+  if (!isManager && !isSelf) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'FORBIDDEN', message: 'You are only authorized to update your own profile.' }
+    });
+  }
+
   const {
     first_name, last_name, email, phone, job_position,
     department_id, working_schedule_id, status,
-    bank_account_number, bank_name, bank_ifsc,
+    bank_account_number, bank_account, private_email, avatar_url,
     role_id, password, pto_days, sick_days, salary_structure_id, wage
   } = req.body;
+
+  const allowedFirstName = first_name;
+  const allowedLastName = last_name;
+  const allowedPhone = phone;
+  const allowedPrivateEmail = private_email;
+  const allowedBankAccount = bank_account || bank_account_number;
+  const allowedAvatarUrl = avatar_url;
+  const allowedEmail = isManager ? email : null;
+  const allowedJobPosition = isManager ? job_position : null;
+  const allowedDepartmentId = isManager ? department_id : null;
+  const allowedWorkingScheduleId = isManager ? working_schedule_id : null;
+  const allowedStatus = isManager ? status : null;
 
   let updatedEmp: any = null;
   const result = await query(
@@ -466,11 +570,13 @@ router.put('/employees/:id', authMiddleware, requireRole(['admin', 'hr_manager',
        working_schedule_id = COALESCE($7, working_schedule_id),
        status = COALESCE($8, status),
        bank_account = COALESCE($9, bank_account),
+       private_email = COALESCE($10, private_email),
+       avatar_url = COALESCE($11, avatar_url),
        updated_at = NOW()
-     WHERE id = $10 RETURNING *`,
-    [first_name, last_name, email, phone, job_position,
-     department_id || null, working_schedule_id || null, status,
-     bank_account_number, String(id)]
+     WHERE id = $12 RETURNING *`,
+    [allowedFirstName, allowedLastName, allowedEmail, allowedPhone, allowedJobPosition,
+     allowedDepartmentId || null, allowedWorkingScheduleId || null, allowedStatus,
+     allowedBankAccount || null, allowedPrivateEmail || null, allowedAvatarUrl || null, String(id)]
   );
 
   if (result.rows && result.rows.length > 0) {
@@ -479,25 +585,31 @@ router.put('/employees/:id', authMiddleware, requireRole(['admin', 'hr_manager',
     const empIdx = memoryDb.employees.findIndex((e) => String(e.id) === String(id));
     if (empIdx >= 0) {
       const emp = memoryDb.employees[empIdx];
-      if (first_name) emp.first_name = first_name;
-      if (last_name) emp.last_name = last_name;
-      if (email) emp.email = email;
-      if (phone) emp.phone = phone;
-      if (job_position) emp.job_position = job_position;
-      if (department_id) emp.department_id = department_id;
-      if (working_schedule_id) emp.working_schedule_id = working_schedule_id;
-      if (status) emp.status = status;
-      if (bank_account_number) emp.bank_account = bank_account_number;
+      if (allowedFirstName) emp.first_name = allowedFirstName;
+      if (allowedLastName) emp.last_name = allowedLastName;
+      if (allowedEmail) emp.email = allowedEmail;
+      if (allowedPhone) emp.phone = allowedPhone;
+      if (allowedJobPosition) emp.job_position = allowedJobPosition;
+      if (allowedDepartmentId) emp.department_id = allowedDepartmentId;
+      if (allowedWorkingScheduleId) emp.working_schedule_id = allowedWorkingScheduleId;
+      if (allowedStatus) emp.status = allowedStatus;
+      if (allowedBankAccount) emp.bank_account = allowedBankAccount;
+      if (allowedPrivateEmail) emp.private_email = allowedPrivateEmail;
+      if (allowedAvatarUrl) emp.avatar_url = allowedAvatarUrl;
       updatedEmp = emp;
     }
+  }
+
+  if (allowedAvatarUrl) {
+    await query(`UPDATE users SET avatar_url = $1 WHERE employee_id = $2 OR LOWER(email) = $3`, [allowedAvatarUrl, String(id), (email || updatedEmp?.email || '').toLowerCase()]);
   }
 
   if (!updatedEmp) {
     return res.status(404).json({ success: false, error: { message: 'Employee not found.' } });
   }
 
-  // Update active contract salary structure and wage
-  if (salary_structure_id || wage) {
+  // Update active contract salary structure and wage (Managers only)
+  if (isManager && (salary_structure_id || wage)) {
     const activeContract = await query(
       `SELECT id FROM contracts WHERE employee_id = $1 AND status = 'running' ORDER BY start_date DESC LIMIT 1`,
       [String(id)]
@@ -525,42 +637,46 @@ router.put('/employees/:id', authMiddleware, requireRole(['admin', 'hr_manager',
     }
   }
 
+  // Password & Role handling
+  const targetRoleId = isManager ? role_id : null;
   if (password) {
     await query(
       `UPDATE users SET role_id = COALESCE($1, role_id), password_hash = $2, password = $2 WHERE employee_id = $3 OR LOWER(email) = $4`,
-      [role_id || null, password, String(id), (email || updatedEmp.email).toLowerCase()]
+      [targetRoleId, password, String(id), (email || updatedEmp.email).toLowerCase()]
     );
-  } else if (role_id) {
+  } else if (targetRoleId) {
     await query(
       `UPDATE users SET role_id = $1 WHERE employee_id = $2 OR LOWER(email) = $3`,
-      [role_id, String(id), (email || updatedEmp.email).toLowerCase()]
+      [targetRoleId, String(id), (email || updatedEmp.email).toLowerCase()]
     );
   }
 
-  // Update Leave Allocations if provided
-  const curYear = new Date().getFullYear();
-  const validFrom = `${curYear}-01-01`;
-  const validUntil = `${curYear}-12-31`;
+  // Update Leave Allocations if provided (Managers only)
+  if (isManager) {
+    const curYear = new Date().getFullYear();
+    const validFrom = `${curYear}-01-01`;
+    const validUntil = `${curYear}-12-31`;
 
-  if (pto_days !== undefined) {
-    await query(
-      `INSERT INTO time_off_allocations (id, employee_id, time_off_type_id, allocated, taken, valid_from, valid_until)
-       VALUES ($1, $2, 'tot_paid', $3, 0, $4, $5)
-       ON CONFLICT (id) DO UPDATE SET allocated = EXCLUDED.allocated`,
-      [`alloc_${id}_pto`, String(id), Number(pto_days), validFrom, validUntil]
-    );
+    if (pto_days !== undefined) {
+      await query(
+        `INSERT INTO time_off_allocations (id, employee_id, time_off_type_id, allocated, taken, valid_from, valid_until)
+         VALUES ($1, $2, 'tot_paid', $3, 0, $4, $5)
+         ON CONFLICT (id) DO UPDATE SET allocated = EXCLUDED.allocated`,
+        [`alloc_${id}_pto`, String(id), Number(pto_days), validFrom, validUntil]
+      );
+    }
+
+    if (sick_days !== undefined) {
+      await query(
+        `INSERT INTO time_off_allocations (id, employee_id, time_off_type_id, allocated, taken, valid_from, valid_until)
+         VALUES ($1, $2, 'tot_sick', $3, 0, $4, $5)
+         ON CONFLICT (id) DO UPDATE SET allocated = EXCLUDED.allocated`,
+        [`alloc_${id}_sick`, String(id), Number(sick_days), validFrom, validUntil]
+      );
+    }
   }
 
-  if (sick_days !== undefined) {
-    await query(
-      `INSERT INTO time_off_allocations (id, employee_id, time_off_type_id, allocated, taken, valid_from, valid_until)
-       VALUES ($1, $2, 'tot_sick', $3, 0, $4, $5)
-       ON CONFLICT (id) DO UPDATE SET allocated = EXCLUDED.allocated`,
-      [`alloc_${id}_sick`, String(id), Number(sick_days), validFrom, validUntil]
-    );
-  }
-
-  return res.json({ success: true, data: { ...updatedEmp, role_id: role_id || 'employee', salary_structure_id, wage } });
+  return res.json({ success: true, data: { ...updatedEmp, role_id: targetRoleId || role_id || 'employee', salary_structure_id, wage } });
 });
 
 // ==========================================

@@ -21,7 +21,7 @@ router.get('/summary', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_p
       JOIN payruns pr ON ps.payrun_id = pr.id
       JOIN employees e ON ps.employee_id = e.id
       LEFT JOIN departments d ON e.department_id = d.id
-      WHERE pr.status IN ('COMPUTED', 'VALIDATED', 'Paid')
+      WHERE LOWER(pr.status) IN ('computed', 'validated', 'paid', 'confirmed', 'draft')
     `;
     const sfParams: any[] = [];
     if (period) {
@@ -160,7 +160,7 @@ router.get('/salary-by-department', authMiddleware, requireRole(['admin', 'hr_ma
       JOIN employees e ON ps.employee_id = e.id
       JOIN departments d ON e.department_id = d.id
       JOIN payruns pr ON ps.payrun_id = pr.id
-      WHERE pr.status IN ('COMPUTED', 'VALIDATED', 'Paid')
+      WHERE LOWER(pr.status) IN ('computed', 'validated', 'paid', 'confirmed', 'draft')
     `;
     const params: any[] = [];
     if (period) {
@@ -193,7 +193,7 @@ router.get('/salary-trend', authMiddleware, requireRole(['admin', 'hr_manager', 
       JOIN payruns pr ON ps.payrun_id = pr.id
       JOIN employees e ON ps.employee_id = e.id
       LEFT JOIN departments d ON e.department_id = d.id
-      WHERE pr.status IN ('COMPUTED', 'VALIDATED', 'Paid')
+      WHERE LOWER(pr.status) IN ('computed', 'validated', 'paid', 'confirmed', 'draft')
     `;
     const params: any[] = [];
     if (department) {

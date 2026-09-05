@@ -18,7 +18,7 @@ export const Input: React.FC<InputProps> = ({
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
-  let inputStyles = 'w-full h-10 px-3 py-2 text-sm rounded-md border transition-colors focus:outline-none';
+  let inputStyles = 'w-full h-10 px-3 py-2 text-sm rounded-md border transition-colors focus:outline-none disabled:bg-[#F8FAFC] disabled:text-[#64748B] disabled:border-[#E2E8F0] disabled:cursor-not-allowed';
 
   if (isComputed) {
     inputStyles += ' bg-[#F3F4F6] border-[#E5E7EB] text-[#1A1A2E] font-mono cursor-not-allowed';
@@ -73,7 +73,7 @@ export const Select: React.FC<SelectProps> = ({
       )}
       <select
         id={selectId}
-        className={`w-full h-10 px-3 py-2 text-sm bg-white rounded-md border border-[#E5E7EB] text-[#1A1A2E] focus:border-[#5B4FE9] focus:ring-2 focus:ring-[#5B4FE9]/15 focus:outline-none transition-colors ${className}`}
+        className={`w-full h-10 px-3 py-2 text-sm bg-white rounded-md border border-[#E5E7EB] text-[#1A1A2E] focus:border-[#5B4FE9] focus:ring-2 focus:ring-[#5B4FE9]/15 focus:outline-none transition-colors disabled:bg-[#F8FAFC] disabled:text-[#64748B] disabled:border-[#E2E8F0] disabled:cursor-not-allowed ${className}`}
         {...props}
       >
         {options.map((opt) => (

@@ -7,6 +7,8 @@ import {
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { useRealtimeSubscription } from '../../../context/RealtimeContext';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
 
@@ -129,6 +131,15 @@ export const PayrollDashboardPage: React.FC = () => {
     loadDashboard();
   }, []);
 
+  // Zero-Reload Real-time synchronization
+  useRealtimeSubscription(
+    ['PAYROLL_UPDATE', 'ATTENDANCE_UPDATE', 'TIMEOFF_UPDATE', 'EMPLOYEE_UPDATE'],
+    () => {
+      console.log('[Dashboard] Auto-refreshing metrics via WebSocket event');
+      loadDashboard();
+    }
+  );
+
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(val);
 
@@ -152,6 +163,18 @@ export const PayrollDashboardPage: React.FC = () => {
     Cancelled: '#EF4444',
   };
 
+  const DEPT_COLORS: Record<string, string> = {
+    'Engineering': '#5A5FE8',
+    'Human Resources': '#8B5CF6',
+    'Sales Operations': '#06B6D4',
+    'Finance & Accounting': '#10B981',
+    'Quality Assurance': '#F59E0B',
+    'Operations & Logistics': '#EC4899',
+    'Information Technology': '#3B82F6',
+  };
+  const FALLBACK_PALETTE = ['#5A5FE8', '#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EC4899', '#3B82F6', '#6366F1'];
+  const getDeptColor = (name: string, index: number) => DEPT_COLORS[name] || FALLBACK_PALETTE[index % FALLBACK_PALETTE.length];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -162,370 +185,521 @@ export const PayrollDashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-[#1A1A2E]">Payroll Dashboard</h1>
-          <p className="text-xs text-[#6B7280]">
-            Live aggregated KPIs — powered by real HR & Payroll data across all modules
-          </p>
-        </div>
+    <div className="space-y-8 animate-fadeIn">
+      {/* Top Context & Header Row */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          {/* Period Filter */}
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-[#191C1F] tracking-tight">
+                Executive HR &amp; Workforce Dashboard
+              </h1>
+              <span className="px-3 py-0.5 rounded-full bg-[#E1E0FF] text-[#4044CE] text-xs font-bold shadow-sm">
+                Live Overview
+              </span>
+            </div>
+            <p className="text-xs text-[#5A5D72] mt-0.5">
+              Real-time enterprise workforce analytics, compensation velocity, and operational compliance indices.
+            </p>
+          </div>
+        </div>
+
+        {/* Action & Filter Capsule Bar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Period Selector Capsule */}
           <div className="relative">
             <select
               value={periodFilter}
               onChange={(e) => setPeriodFilter(e.target.value)}
-              className="appearance-none bg-[#F3F4F6] border border-[#D1D5DB] rounded-lg px-3 py-1.5 text-xs font-medium text-[#374151] pr-7 cursor-pointer"
+              className="appearance-none bg-white border border-[#E2E8F0] rounded-full pl-4 pr-8 py-2 text-xs font-bold text-[#191C1F] cursor-pointer shadow-sm hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#5A5FE8]/30 transition-all"
             >
               <option>Sep 2026</option>
               <option>Aug 2026</option>
               <option>Jul 2026</option>
               <option>All Periods</option>
             </select>
-            <ChevronDown className="absolute right-2 top-2 w-3.5 h-3.5 text-[#6B7280] pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-2.5 w-3.5 h-3.5 text-[#5A5D72] pointer-events-none" />
           </div>
 
-          {/* Department Filter */}
+          {/* Department Selector Capsule */}
           <div className="relative">
             <select
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
-              className="appearance-none bg-[#F3F4F6] border border-[#D1D5DB] rounded-lg px-3 py-1.5 text-xs font-medium text-[#374151] pr-7 cursor-pointer"
+              className="appearance-none bg-white border border-[#E2E8F0] rounded-full pl-4 pr-8 py-2 text-xs font-bold text-[#191C1F] cursor-pointer shadow-sm hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#5A5FE8]/30 transition-all"
             >
               <option>All Departments</option>
               <option>Sales Operations</option>
               <option>Engineering</option>
               <option>Human Resources</option>
-              <option>Finance & Accounting</option>
+              <option>Finance &amp; Accounting</option>
             </select>
-            <ChevronDown className="absolute right-2 top-2 w-3.5 h-3.5 text-[#6B7280] pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-2.5 w-3.5 h-3.5 text-[#5A5D72] pointer-events-none" />
           </div>
 
           <button
             onClick={loadDashboard}
-            className="flex items-center gap-1.5 bg-[#5B4FE9] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#4A3FD8] transition-colors"
+            title="Refresh Metrics"
+            className="w-9 h-9 rounded-full bg-white border border-[#E2E8F0] text-[#5A5D72] hover:text-[#5A5FE8] shadow-sm flex items-center justify-center transition-all active:scale-95"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Refresh
+            <RefreshCw className="w-4 h-4" />
           </button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate('/payroll')}
+            className="gap-1.5 shadow-glow"
+          >
+            <DollarSign className="w-4 h-4" />
+            <span>Process Payrun</span>
+          </Button>
         </div>
       </div>
 
-      {/* KPI Cards Row */}
-      {summary?.salary_fund.payslip_count === 0 && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-3 rounded-lg text-sm font-semibold flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-blue-600" />
-          No payroll data processed yet. Please run your first Payrun to see dashboard insights.
+      {/* 4 Finnova Daylight KPI Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        {/* KPI 1: Total Salary Payout */}
+        <div className="bg-white rounded-[24px] p-6 shadow-fintech border border-[#E2E8F0]/80 flex flex-col justify-between group hover:shadow-fintech-hover hover:-translate-y-1 transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#5A5D72]">
+              Total Net Salary Fund
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-[#E1E0FF] flex items-center justify-center text-[#4044CE] shadow-sm">
+              <DollarSign className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="my-3">
+            <div className="text-3xl font-extrabold text-[#191C1F] tracking-tight font-tabular">
+              {formatCurrency(summary?.salary_fund.total_net || 0)}
+            </div>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">
+                <TrendingUp className="w-3 h-3" /> Active
+              </span>
+              <span className="text-xs text-[#5A5D72]">
+                {summary?.salary_fund.payslip_count || 0} payslip(s) generated
+              </span>
+            </div>
+          </div>
+          <div className="pt-2 border-t border-[#E2E8F0]/60 flex items-center justify-between text-xs text-[#5A5D72]">
+            <span>Gross Value</span>
+            <span className="font-bold text-[#191C1F] font-tabular">
+              {formatCurrency(summary?.salary_fund.total_gross || 0)}
+            </span>
+          </div>
         </div>
-      )}
-      <div className="grid grid-cols-6 gap-4">
-        <Card variant="kpi">
-          <div className="flex items-center gap-2 mb-1">
-            <DollarSign className="w-4 h-4 text-[#5B4FE9]" />
-            <p className="text-[10px] font-semibold text-[#6B7280] uppercase">Total Net Salary Fund</p>
-          </div>
-          <p className="text-2xl font-bold text-[#5B4FE9] font-mono">
-            {formatCurrency(summary?.salary_fund.total_net || 0)}
-          </p>
-          <p className="text-[10px] text-slate-500 mt-1">
-            {summary?.salary_fund.payslip_count || 0} payslip(s) this period
-          </p>
-        </Card>
 
-        <Card variant="kpi">
-          <div className="flex items-center gap-2 mb-1">
-            <Users className="w-4 h-4 text-[#14141F]" />
-            <p className="text-[10px] font-semibold text-[#6B7280] uppercase">Active Headcount</p>
+        {/* KPI 2: Active Headcount */}
+        <div className="bg-white rounded-[24px] p-6 shadow-fintech border border-[#E2E8F0]/80 flex flex-col justify-between group hover:shadow-fintech-hover hover:-translate-y-1 transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#5A5D72]">
+              Active Workforce
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-[#DFE1FA] flex items-center justify-center text-[#5A5D72] shadow-sm">
+              <Users className="w-5 h-5" />
+            </div>
           </div>
-          <p className="text-2xl font-bold text-[#14141F] font-mono">
-            {summary?.active_headcount || 0}
-          </p>
-          <p className="text-[10px] text-slate-500 mt-1">Employees currently active</p>
-        </Card>
+          <div className="my-3">
+            <div className="text-3xl font-extrabold text-[#191C1F] tracking-tight font-tabular">
+              {summary?.active_headcount || 0}{' '}
+              <span className="text-base font-normal text-[#5A5D72]">Employees</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#E1E0FF] text-[#4044CE] text-xs font-bold">
+                100% Contracted
+              </span>
+              <span className="text-xs text-[#5A5D72]">Full-time &amp; Part-time</span>
+            </div>
+          </div>
+          <div className="pt-2 border-t border-[#E2E8F0]/60 flex items-center justify-between text-xs text-[#5A5D72]">
+            <span>Avg Net / Employee</span>
+            <span className="font-bold text-[#191C1F] font-tabular">
+              {formatCurrency(summary?.avg_salary_per_employee || 0)}
+            </span>
+          </div>
+        </div>
 
-        <Card variant="kpi">
-          <div className="flex items-center gap-2 mb-1">
-            <DollarSign className="w-4 h-4 text-[#8B5CF6]" />
-            <p className="text-[10px] font-semibold text-[#6B7280] uppercase">Avg Salary / Employee</p>
+        {/* KPI 3: Attendance Health Rate */}
+        <div className="bg-white rounded-[24px] p-6 shadow-fintech border border-[#E2E8F0]/80 flex flex-col justify-between group hover:shadow-fintech-hover hover:-translate-y-1 transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#5A5D72]">
+              Attendance Health Rate
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
           </div>
-          <p className="text-2xl font-bold text-[#8B5CF6] font-mono">
-            {formatCurrency(summary?.avg_salary_per_employee || 0)}
-          </p>
-          <p className="text-[10px] text-slate-500 mt-1">Net salary per head</p>
-        </Card>
+          <div className="my-3">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-[#191C1F] tracking-tight font-tabular">
+                {summary?.attendance_health.rate || 100}%
+              </span>
+              <span className="text-xs font-bold text-emerald-600">On-Time Ratio</span>
+            </div>
+            {/* SVG Progress Ring */}
+            <div className="mt-2 flex items-center gap-2">
+              <div className="w-full bg-[#EDEEF3] h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${summary?.attendance_health.rate || 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="pt-2 border-t border-[#E2E8F0]/60 flex items-center justify-between text-xs text-[#5A5D72]">
+            <span>Audit Exception</span>
+            <span className="font-bold text-amber-600">
+              {summary?.attendance_health.missing_checkouts || 0} missing checkout(s)
+            </span>
+          </div>
+        </div>
 
-        <Card variant="kpi">
-          <div className="flex items-center gap-2 mb-1">
-            <Calendar className="w-4 h-4 text-[#3B82F6]" />
-            <p className="text-[10px] font-semibold text-[#6B7280] uppercase">Approved Time Off</p>
+        {/* KPI 4: Time Off Days */}
+        <div className="bg-white rounded-[24px] p-6 shadow-fintech border border-[#E2E8F0]/80 flex flex-col justify-between group hover:shadow-fintech-hover hover:-translate-y-1 transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#5A5D72]">
+              Approved Leave Days
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-cyan-50 flex items-center justify-center text-cyan-600 shadow-sm">
+              <Calendar className="w-5 h-5" />
+            </div>
           </div>
-          <p className="text-2xl font-bold text-[#3B82F6] font-mono">
-            {summary?.approved_time_off_days || 0} <span className="text-sm font-normal">Days</span>
-          </p>
-          <p className="text-[10px] text-slate-500 mt-1">Across all leave types</p>
-        </Card>
-
-        <Card variant="kpi">
-          <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck className="w-4 h-4 text-[#22C55E]" />
-            <p className="text-[10px] font-semibold text-[#6B7280] uppercase">Attendance Audits</p>
+          <div className="my-3">
+            <div className="text-3xl font-extrabold text-[#191C1F] tracking-tight font-tabular">
+              {summary?.approved_time_off_days || 0}{' '}
+              <span className="text-base font-normal text-[#5A5D72]">Days</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-700 text-xs font-bold">
+                Allocated
+              </span>
+              <span className="text-xs text-[#5A5D72]">Annual &amp; Sick Paid</span>
+            </div>
           </div>
-          <p className="text-2xl font-bold text-[#22C55E] font-mono">
-            {summary?.attendance_health.rate || 0}%
-          </p>
-          <p className="text-[10px] text-amber-600 font-semibold mt-1">
-            {summary?.attendance_health.missing_checkouts || 0} missing check-out(s)
-          </p>
-        </Card>
-
-        <Card variant="kpi">
-          <div className="flex items-center gap-2 mb-1">
-            <Clock className="w-4 h-4 text-[#F59E0B]" />
-            <p className="text-[10px] font-semibold text-[#6B7280] uppercase">Pending Requests</p>
+          <div className="pt-2 border-t border-[#E2E8F0]/60 flex items-center justify-between text-xs text-[#5A5D72]">
+            <span>Pending Approvals</span>
+            <span className="font-bold text-amber-600">
+              {summary?.pending_time_off_requests || 0} request(s)
+            </span>
           </div>
-          <p className="text-2xl font-bold text-[#F59E0B] font-mono">
-            {summary?.pending_time_off_requests || 0}
-          </p>
-          <p className="text-[10px] text-slate-500 mt-1">Time off awaiting approval</p>
-        </Card>
+        </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-3 gap-4">
-        {/* Salary Cost by Department */}
-        <Card title="Salary Cost by Department">
-          <div className="space-y-3 mt-2">
-            {deptSalary.length === 0 ? (
-              <p className="text-xs text-[#9CA3AF] text-center py-4">No payroll data available yet</p>
-            ) : (
-              deptSalary.map((dept, i) => {
-                const maxGross = Math.max(...deptSalary.map(d => d.total_gross), 1);
-                const barWidth = Math.max(8, (dept.total_gross / maxGross) * 100);
-                return (
-                  <div key={i}>
-                    <div className="flex justify-between text-[11px] mb-1">
-                      <span className="font-semibold text-[#374151]">{dept.department}</span>
-                      <span className="font-mono text-[#5B4FE9]">{formatCurrency(dept.total_gross)}</span>
-                    </div>
-                    <div className="w-full bg-[#F3F4F6] rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-[#5B4FE9] to-[#8B5CF6] h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${barWidth}%` }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-[#9CA3AF] mt-0.5">{dept.employee_count} employee(s)</p>
-                  </div>
-                );
-              })
-            )}
+      {/* Visual Charts & Ledgers Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Monthly Net Trend Chart (lg:col-span-7) */}
+        <div className="lg:col-span-7 bg-white rounded-[28px] p-6 shadow-fintech border border-[#E2E8F0]/80 flex flex-col justify-between hover:shadow-fintech-hover hover:-translate-y-1 transition-all duration-300">
+          <div className="flex items-center justify-between pb-4 border-b border-[#E2E8F0]/60">
+            <div>
+              <h2 className="text-base font-bold text-[#191C1F]">Monthly Compensation Trend</h2>
+              <p className="text-xs text-[#5A5D72]">Gross vs Net payroll disbursals across closed batches</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 text-xs text-[#5A5D72] font-semibold bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200/80">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#5A5FE8] shadow-xs" /> Net Payout
+              </span>
+              <span className="flex items-center gap-1.5 text-xs text-[#5A5D72] font-semibold bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200/80">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#06B6D4] shadow-xs" /> Gross
+              </span>
+            </div>
           </div>
-        </Card>
 
-        {/* Monthly Net Salary Trend */}
-        <Card title="Monthly Net Salary Trend">
-          <div className="space-y-2 mt-2">
+          {/* Fluid Glassmorphic Area Graph */}
+          <div className="py-2">
             {salaryTrend.length === 0 ? (
-              <p className="text-xs text-[#9CA3AF] text-center py-4">No trend data available yet</p>
+              <div className="text-center py-12 text-[#94A3B8] text-xs font-semibold">
+                No historical payrun data processed yet
+              </div>
             ) : (
-              salaryTrend.map((month, i) => {
-                const maxNet = Math.max(...salaryTrend.map(m => m.total_net), 1);
-                const barWidth = Math.max(8, (month.total_net / maxNet) * 100);
-                return (
-                  <div key={i} className="flex items-center gap-3">
-                    <span className="text-[10px] font-semibold text-[#6B7280] w-16 flex-shrink-0">
-                      {month.month_label}
-                    </span>
-                    <div className="flex-1 bg-[#F3F4F6] rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-[#3B82F6] to-[#60A5FA] h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${barWidth}%` }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-mono text-[#374151] w-16 text-right">
-                      {formatCurrency(month.total_net)}
-                    </span>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </Card>
+              <div className="w-full h-[180px] relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={salaryTrend}
+                    margin={{ top: 12, right: 12, left: -16, bottom: 0 }}
+                  >
+                    <defs>
+                      {/* Fluid Electric Indigo Glass Gradient for Net Payout */}
+                      <linearGradient id="fluidGlassNet" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#5A5FE8" stopOpacity={0.45} />
+                        <stop offset="50%" stopColor="#5A5FE8" stopOpacity={0.16} />
+                        <stop offset="95%" stopColor="#5A5FE8" stopOpacity={0.01} />
+                      </linearGradient>
 
-        {/* Payslip Status & Alerts */}
-        <Card title="Payslip Status & Payroll Alerts">
-          <div className="space-y-3 mt-2">
-            {/* Status split */}
-            <div>
-              <p className="text-[10px] font-semibold text-[#6B7280] uppercase mb-2">Status Split</p>
-              {payslipStatus.length === 0 ? (
-                <p className="text-xs text-[#9CA3AF] text-center py-2">No payslips yet</p>
-              ) : (
-                <div className="flex gap-2 flex-wrap">
-                  {payslipStatus.map((ps, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-semibold"
-                      style={{
-                        borderColor: statusColors[ps.status] || '#6B7280',
-                        color: statusColors[ps.status] || '#6B7280',
+                      {/* Fluid Cyan Glass Gradient for Gross Amount */}
+                      <linearGradient id="fluidGlassGross" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#06B6D4" stopOpacity={0.22} />
+                        <stop offset="60%" stopColor="#06B6D4" stopOpacity={0.06} />
+                        <stop offset="100%" stopColor="#06B6D4" stopOpacity={0.0} />
+                      </linearGradient>
+
+                      {/* Subtle neon glass line glow */}
+                      <filter id="glassGlow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#5A5FE8" floodOpacity="0.35" />
+                      </filter>
+                    </defs>
+
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#F1F5F9"
+                      vertical={false}
+                    />
+
+                    <XAxis
+                      dataKey="month_label"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#64748B', fontSize: 11, fontWeight: 600 }}
+                      dy={6}
+                    />
+
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 500 }}
+                      tickFormatter={(val) =>
+                        `$${val >= 1000000 ? (val / 1000000).toFixed(1) + 'M' : val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}`
+                      }
+                      dx={-2}
+                    />
+
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const gross = (payload.find((p) => p.dataKey === 'total_gross')?.value as number) || 0;
+                          const net = (payload.find((p) => p.dataKey === 'total_net')?.value as number) || 0;
+                          return (
+                            <div className="backdrop-blur-md bg-[#12141F]/90 text-white p-3 rounded-2xl shadow-deck text-xs border border-white/10 z-50 min-w-[170px]">
+                              <div className="font-bold text-white text-xs mb-2 border-b border-white/10 pb-1.5 flex items-center justify-between">
+                                <span>{label}</span>
+                                <span className="text-[10px] text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded-full font-semibold">
+                                  {gross > 0 ? Math.round((net / gross) * 100) : 0}% Net Ratio
+                                </span>
+                              </div>
+                              <div className="space-y-1 text-[11px] font-mono">
+                                <div className="flex items-center justify-between text-[#38BDF8]">
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-[#38BDF8]" /> Gross
+                                  </span>
+                                  <span className="font-bold text-white">{formatCurrency(gross)}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-[#A5B4FC]">
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-[#5A5FE8]" /> Net Payout
+                                  </span>
+                                  <span className="font-bold text-white">{formatCurrency(net)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
                       }}
-                    >
-                      <span
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: statusColors[ps.status] || '#6B7280' }}
-                      />
-                      {ps.status}: {ps.count}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    />
 
-            {/* Current Alerts inline */}
-            <div>
-              <p className="text-[10px] font-semibold text-[#6B7280] uppercase mb-2">Current Alerts</p>
-              {alerts.length === 0 ? (
-                <p className="text-xs text-emerald-600 font-semibold">✓ No active alerts</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {alerts.slice(0, 3).map((alert, i) => (
-                    <div
-                      key={i}
-                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-[10px] font-semibold ${severityStyles[alert.severity] || severityStyles.info}`}
-                    >
-                      {severityIcons[alert.severity] || severityIcons.info}
-                      <span className="truncate">{alert.message}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </Card>
-      </div>
+                    {/* Gross Salary Curve with Cyan Tint */}
+                    <Area
+                      type="monotone"
+                      dataKey="total_gross"
+                      name="Gross Salary"
+                      stroke="#06B6D4"
+                      strokeWidth={2}
+                      strokeDasharray="4 4"
+                      fillOpacity={1}
+                      fill="url(#fluidGlassGross)"
+                    />
 
-      {/* Bottom Row */}
-      <div className="grid grid-cols-4 gap-4">
-        {/* Attendance Overview */}
-        <Card title="Attendance Overview">
-          <div className="grid grid-cols-3 gap-2 mt-2">
-            <div className="text-center p-2 bg-emerald-50 rounded-lg">
-              <p className="text-lg font-bold text-emerald-600 font-mono">{attOverview?.present || 0}</p>
-              <p className="text-[9px] text-emerald-700 font-semibold">Present</p>
-            </div>
-            <div className="text-center p-2 bg-amber-50 rounded-lg">
-              <p className="text-lg font-bold text-amber-600 font-mono">{attOverview?.missing_checkout || 0}</p>
-              <p className="text-[9px] text-amber-700 font-semibold">Missing</p>
-            </div>
-            <div className="text-center p-2 bg-blue-50 rounded-lg">
-              <p className="text-lg font-bold text-blue-600 font-mono">{attOverview?.manual_corrections || 0}</p>
-              <p className="text-[9px] text-blue-700 font-semibold">Manual</p>
-            </div>
-          </div>
-        </Card>
-
-        {/* Time Off Overview */}
-        <Card title="Time Off Overview">
-          <div className="mt-2">
-            {deptOverview.length === 0 && (
-              <p className="text-xs text-[#9CA3AF] text-center py-2">No data</p>
+                    {/* Net Payout Curve with Electric Indigo Fluid Glass */}
+                    <Area
+                      type="monotone"
+                      dataKey="total_net"
+                      name="Net Payout"
+                      stroke="#5A5FE8"
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#fluidGlassNet)"
+                      filter="url(#glassGlow)"
+                      activeDot={{
+                        r: 6,
+                        fill: '#5A5FE8',
+                        stroke: '#ffffff',
+                        strokeWidth: 2.5,
+                        className: 'drop-shadow-lg',
+                      }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             )}
-            <table className="w-full text-[10px]">
-              <thead>
-                <tr className="text-[#6B7280] border-b">
-                  <th className="text-left py-1 font-semibold">Type</th>
-                  <th className="text-right py-1 font-semibold">Approved</th>
-                  <th className="text-right py-1 font-semibold">Pending</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-[#F3F4F6]">
-                  <td className="py-1.5 font-semibold text-[#374151]">Paid Time Off</td>
-                  <td className="py-1.5 text-right font-mono">{summary?.approved_time_off_days || 0}</td>
-                  <td className="py-1.5 text-right font-mono text-amber-600">{summary?.pending_time_off_requests || 0}</td>
-                </tr>
-              </tbody>
-            </table>
           </div>
-        </Card>
 
-        {/* Department Overview */}
-        <Card title="Department Overview">
-          <div className="mt-2">
-            <table className="w-full text-[10px]">
-              <thead>
-                <tr className="text-[#6B7280] border-b">
-                  <th className="text-left py-1 font-semibold">Department</th>
-                  <th className="text-right py-1 font-semibold">Headcount</th>
-                  <th className="text-right py-1 font-semibold">Avg Salary</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deptOverview.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="text-center py-3 text-[#9CA3AF]">No data</td>
-                  </tr>
-                ) : (
-                  deptOverview.map((dept, i) => (
-                    <tr key={i} className="border-b border-[#F3F4F6]">
-                      <td className="py-1.5 font-semibold text-[#374151]">{dept.department}</td>
-                      <td className="py-1.5 text-right font-mono">{dept.headcount}</td>
-                      <td className="py-1.5 text-right font-mono text-[#5B4FE9]">{formatCurrency(dept.avg_salary)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          <div className="pt-4 border-t border-[#E2E8F0]/60 flex items-center justify-between text-xs text-[#5A5D72]">
+            <span>Payroll Engine Formula Sequence: Base + Allowances - Statutory Taxes</span>
+            <span className="font-bold text-[#5A5FE8]">Real-time Reconciliation</span>
           </div>
-        </Card>
+        </div>
 
-        {/* Models to Aggregate */}
-        <Card title="Models to Aggregate">
-          <div className="space-y-1.5 mt-2">
-            {[
-              { name: 'Employees / Departments', icon: <Users className="w-3.5 h-3.5" />, desc: 'headcount, seniority, grouping' },
-              { name: 'Contracts', icon: <FileText className="w-3.5 h-3.5" />, desc: 'wages, statuses, duration' },
-              { name: 'Attendance', icon: <Clock className="w-3.5 h-3.5" />, desc: 'presence, overtime, exceptions' },
-              { name: 'Payruns / Payslips', icon: <DollarSign className="w-3.5 h-3.5" />, desc: 'salary totals, paid vs pending, trend data' },
-              { name: 'Time Off Requests', icon: <Calendar className="w-3.5 h-3.5" />, desc: 'leave balance and trend breakdown' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-[#F9FAFB] transition-colors">
-                <div className="text-[#5B4FE9]">{item.icon}</div>
-                <div>
-                  <p className="text-[10px] font-semibold text-[#374151]">{item.name}</p>
-                  <p className="text-[9px] text-[#9CA3AF]">{item.desc}</p>
+        {/* Right Column: Department Cost Breakdown (lg:col-span-5) */}
+        <div className="lg:col-span-5 bg-white rounded-[28px] p-6 shadow-fintech border border-[#E2E8F0]/80 flex flex-col justify-between hover:shadow-fintech-hover hover:-translate-y-1 transition-all duration-300">
+          <div className="flex items-center justify-between pb-4 border-b border-[#E2E8F0]/60">
+            <div>
+              <h2 className="text-base font-bold text-[#191C1F]">Cost by Department</h2>
+              <p className="text-xs text-[#5A5D72]">Total salary disbursement split</p>
+            </div>
+            <Building2 className="w-5 h-5 text-[#5A5FE8]" />
+          </div>
+
+          {(() => {
+            const totalDeptGross = deptSalary.reduce((sum, d) => sum + (Number(d.total_gross) || 0), 0);
+            const chartData = deptSalary.map((dept, idx) => ({
+              name: dept.department,
+              value: Number(dept.total_gross) || 0,
+              net: Number(dept.total_net) || 0,
+              employee_count: dept.employee_count,
+              pct: totalDeptGross > 0 ? Math.round(((Number(dept.total_gross) || 0) / totalDeptGross) * 100) : 0,
+              color: getDeptColor(dept.department, idx),
+            }));
+
+            if (deptSalary.length === 0) {
+              return <p className="text-xs text-[#94A3B8] text-center py-10">No department allocations yet</p>;
+            }
+
+            return (
+              <div className="py-2">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  {/* Donut Chart with Center KPI */}
+                  <div className="w-[150px] h-[150px] relative shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={42}
+                          outerRadius={65}
+                          paddingAngle={2.5}
+                          dataKey="value"
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} stroke="#ffffff" strokeWidth={1.5} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-[#12141F] text-white p-2.5 rounded-xl shadow-deck text-xs border border-white/10 z-50">
+                                  <div className="font-bold flex items-center gap-1.5 mb-1">
+                                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: data.color }} />
+                                    <span>{data.name}</span>
+                                  </div>
+                                  <div className="text-slate-300 font-mono text-[11px]">
+                                    Gross: <span className="font-bold text-white">{formatCurrency(data.value)}</span> ({data.pct}%)
+                                  </div>
+                                  <div className="text-slate-400 text-[10px] mt-0.5">
+                                    {data.employee_count} active employees · Net: {formatCurrency(data.net)}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    {/* Center Text inside Donut */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</span>
+                      <span className="text-xs font-extrabold text-[#12141F] font-tabular">
+                        ${(totalDeptGross / 1000).toFixed(0)}k
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Compact Legend */}
+                  <div className="flex-1 w-full space-y-1 max-h-[160px] overflow-y-auto pr-1">
+                    {chartData.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between text-xs py-0.5 px-1.5 rounded-md hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                          <span className="font-semibold text-slate-700 truncate text-[11px]">{item.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0 pl-1">
+                          <span className="font-bold text-slate-900 font-tabular text-[11px]">
+                            {formatCurrency(item.value)}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">({item.pct}%)</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            ))}
+            );
+          })()}
+
+          {/* Quick Payslip Status Chips */}
+          <div className="pt-4 border-t border-[#E2E8F0]/60">
+            <span className="text-xs font-bold text-[#5A5D72] uppercase tracking-wider block mb-2">
+              Payslip Status Distribution
+            </span>
+            <div className="flex gap-2 flex-wrap">
+              {payslipStatus.length === 0 ? (
+                <span className="text-xs text-[#94A3B8]">No payslips recorded</span>
+              ) : (
+                payslipStatus.map((ps, i) => (
+                  <Badge key={i} status={ps.status}>
+                    {ps.status}: {ps.count}
+                  </Badge>
+                ))
+              )}
+            </div>
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Proactive Alerts Section (Full Width) */}
-      {alerts.length > 0 && (
-        <Card title="Proactive Executive Alerts & Warnings">
-          <div className="space-y-2">
+      {/* Compliance & Operational Audit Alerts Panel */}
+      <div className="bg-[#12141F] text-white rounded-[32px] p-6 lg:p-8 shadow-deck border border-white/5">
+        <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#1B1E30] flex items-center justify-center text-[#A5B4FC]">
+              <AlertTriangle className="w-5 h-5 text-[#F59E0B]" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white tracking-tight">System Compliance &amp; Audit Logs</h3>
+              <p className="text-xs text-[#94A3B8]">Automated discrepancy detection and payroll health flags</p>
+            </div>
+          </div>
+          <span className="bg-[#1B1E30] text-[#C0C1FF] text-xs font-bold px-3 py-1 rounded-full border border-white/5">
+            {alerts.length} Flag(s)
+          </span>
+        </div>
+
+        {alerts.length === 0 ? (
+          <div className="py-6 text-center text-xs text-[#10B981] font-bold">
+            ✓ All records verified. Zero discrepancies or missing attendances detected.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {alerts.map((alert, i) => (
               <div
                 key={i}
-                className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border text-xs font-semibold ${severityStyles[alert.severity] || severityStyles.info}`}
+                className="bg-[#171A2A] hover:bg-[#1E2238] p-4 rounded-2xl border border-white/5 flex items-start gap-3 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  {severityIcons[alert.severity] || severityIcons.info}
-                  <span>{alert.message}</span>
+                {severityIcons[alert.severity] || severityIcons.info}
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">{alert.type}</span>
+                  <span className="text-xs text-[#94A3B8] mt-0.5">{alert.message}</span>
                 </div>
-                {alert.type === 'MISSING_CHECKOUT' && (
-                  <Button variant="secondary" size="sm" onClick={() => navigate('/attendance')} className="bg-white">
-                    Resolve Now
-                  </Button>
-                )}
               </div>
             ))}
           </div>
-        </Card>
-      )}
+        )}
+      </div>
     </div>
   );
 };

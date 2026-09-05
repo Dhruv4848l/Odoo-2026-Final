@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { query } from '../../core/db.js';
 import { authMiddleware, requireRole, AuthenticatedRequest } from '../../core/auth.js';
+import { broadcastEvent } from '../../core/websocket.js';
 
 const router = Router();
 
@@ -127,6 +128,17 @@ router.post('/check-in', authMiddleware, async (req: AuthenticatedRequest, res: 
     [attId, String(employee_id)]
   );
 
+  broadcastEvent({
+    type: 'ATTENDANCE_UPDATE',
+    action: 'CHECK_IN',
+    payload: result.rows?.[0],
+    notification: {
+      title: 'Attendance Clock-In',
+      message: `Employee ${employee_id} clocked in at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      type: 'info',
+    },
+  });
+
   return res.status(201).json({ success: true, data: result.rows?.[0] });
 });
 
@@ -161,6 +173,17 @@ router.post('/check-out', authMiddleware, async (req: AuthenticatedRequest, res:
     [workedHours, overtimeHours, String(currentRecord.id)]
   );
 
+  broadcastEvent({
+    type: 'ATTENDANCE_UPDATE',
+    action: 'CHECK_OUT',
+    payload: result.rows?.[0],
+    notification: {
+      title: 'Attendance Clock-Out',
+      message: `Employee ${employee_id} clocked out. Shift completed: ${workedHours} hrs.`,
+      type: 'success',
+    },
+  });
+
   return res.json({ success: true, data: result.rows?.[0] });
 });
 
@@ -193,6 +216,17 @@ router.post('/', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll
     [attId, String(employee_id), check_in, check_out || null, workedHours, overtimeHours,
      audit_note || `Manually created by ${req.user?.email}`]
   );
+
+  broadcastEvent({
+    type: 'ATTENDANCE_UPDATE',
+    action: 'MANUAL_ENTRY',
+    payload: result.rows?.[0],
+    notification: {
+      title: 'Attendance Log Updated',
+      message: `Manual attendance entry recorded for employee ${employee_id}`,
+      type: 'info',
+    },
+  });
 
   return res.status(201).json({ success: true, data: result.rows?.[0] });
 });

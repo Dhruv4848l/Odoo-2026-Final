@@ -1,7 +1,9 @@
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { registerRoutes } from './routes.loader.js';
+import { initWebSocket } from './core/websocket.js';
 
 dotenv.config();
 
@@ -36,6 +38,11 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-app.listen(PORT, () => {
+// Create HTTP server & attach WebSocket engine
+const server = http.createServer(app);
+initWebSocket(server);
+
+server.listen(PORT, () => {
   console.log(`🚀 PeoplePay360 Backend API running on http://localhost:${PORT}`);
+  console.log(`⚡ PeoplePay360 WebSocket running on ws://localhost:${PORT}/ws`);
 });

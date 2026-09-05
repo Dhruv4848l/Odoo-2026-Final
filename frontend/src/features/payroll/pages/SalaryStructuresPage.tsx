@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Plus, Sliders, DollarSign, FolderPlus, Info, CheckCircle2 } from 'lucide-react';
+import { Plus, Sliders, DollarSign, FolderPlus, Info, CheckCircle2, Layers, ArrowRight } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
@@ -8,7 +8,6 @@ import { Table, Column } from '../../../components/ui/Table';
 import { Modal } from '../../../components/ui/Modal';
 import { Input, Select } from '../../../components/ui/Input';
 import { PayrollApiClient, SalaryStructure, SalaryRule } from '../services/payrollApi';
-
 import { useAuth } from '../../../context/AuthContext';
 import { getNormalizedRole } from '../../../layouts/SubNav';
 
@@ -138,13 +137,17 @@ export const SalaryStructuresPage: React.FC = () => {
     {
       header: 'Seq',
       accessorKey: 'sequence',
-      cell: (row) => <span className="font-mono text-xs text-slate-500 font-bold">#{row.sequence}</span>,
+      cell: (row) => (
+        <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+          #{row.sequence}
+        </span>
+      ),
     },
     {
       header: 'Code',
       accessorKey: 'code',
       cell: (row) => (
-        <span className="font-mono bg-slate-100 text-[#14141F] px-2 py-0.5 rounded text-xs font-semibold border border-slate-200">
+        <span className="font-mono bg-slate-100 text-[#12141F] px-2.5 py-1 rounded-full text-xs font-bold border border-slate-200/80">
           {row.code}
         </span>
       ),
@@ -152,7 +155,11 @@ export const SalaryStructuresPage: React.FC = () => {
     {
       header: 'Rule Name',
       accessorKey: 'name',
-      cell: (row) => <span className="font-semibold text-xs text-[#1A1A2E]">{row.name}</span>,
+      cell: (row) => (
+        <span className="font-bold text-xs text-[#12141F] hover:text-primary transition-colors">
+          {row.name}
+        </span>
+      ),
     },
     {
       header: 'Category',
@@ -174,11 +181,11 @@ export const SalaryStructuresPage: React.FC = () => {
       header: 'Calculation Details',
       cell: (row) => (
         <div className="flex flex-col gap-0.5 text-xs">
-          {row.computation_method === 'Fixed' && <span className="font-mono text-slate-700">${row.amount}</span>}
-          {row.computation_method === 'Percentage' && <span className="font-mono text-slate-700">{row.amount}% of Basic</span>}
-          {row.computation_method === 'Formula' && <span className="font-mono text-xs bg-slate-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-100">{row.formula}</span>}
-          {row.cap_amount && <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.2 rounded inline-block w-fit">Cap: ${row.cap_amount}</span>}
-          {row.condition_expression && <span className="text-[10px] text-purple-700 font-mono italic">If: {row.condition_expression}</span>}
+          {row.computation_method === 'Fixed' && <span className="font-mono text-slate-700 font-tabular font-semibold">${row.amount}</span>}
+          {row.computation_method === 'Percentage' && <span className="font-mono text-slate-700 font-tabular font-semibold">{row.amount}% of Basic</span>}
+          {row.computation_method === 'Formula' && <span className="font-mono text-xs bg-primary/5 text-primary px-2 py-0.5 rounded-md border border-primary/20">{row.formula}</span>}
+          {row.cap_amount && <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full inline-block w-fit">Cap: ${row.cap_amount}</span>}
+          {row.condition_expression && <span className="text-[10px] text-indigo-700 font-mono italic">If: {row.condition_expression}</span>}
         </div>
       ),
     },
@@ -186,52 +193,31 @@ export const SalaryStructuresPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Module Sub-Navigation Bar */}
-      <div className="flex items-center gap-2 border-b border-[#E5E7EB] pb-3">
-        <NavLink
-          to="/payroll"
-          end
-          className={({ isActive }) =>
-            `flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-              isActive
-                ? 'bg-[#5B4FE9] text-white shadow-sm'
-                : 'bg-white border border-[#E5E7EB] text-[#6B7280] hover:bg-slate-50'
-            }`
-          }
-        >
-          <DollarSign className="w-4 h-4" />
-          <span>Payruns & Batches</span>
-        </NavLink>
 
-        <NavLink
-          to="/payroll/structures"
-          className={({ isActive }) =>
-            `flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-              isActive
-                ? 'bg-[#5B4FE9] text-white shadow-sm'
-                : 'bg-white border border-[#E5E7EB] text-[#6B7280] hover:bg-slate-50'
-            }`
-          }
-        >
-          <Sliders className="w-4 h-4" />
-          <span>Salary Structures & Rules</span>
-        </NavLink>
-      </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-[#1A1A2E]">Salary Structure Setup</h1>
-          <p className="text-xs text-[#6B7280]">Configure sequenced salary rules, percentages, formulas, and caps for payroll computation</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-semibold text-[11px] uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
+              Rules Engine Architecture
+            </span>
+            <span className="text-slate-300">•</span>
+            <span className="text-slate-500 text-xs">Dynamic Multi-Tier Computation</span>
+          </div>
+          <h1 className="text-2xl font-bold text-[#12141F] tracking-tight">Salary Structures & Rules</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Configure sequenced salary rules, percentages, formulas, and caps for automatic payroll calculation
+          </p>
         </div>
         {canManageRules ? (
-          <div className="flex items-center gap-3">
-            <Button variant="secondary" className="gap-2" onClick={() => setIsAddStructModalOpen(true)}>
-              <FolderPlus className="w-4 h-4 text-[#5B4FE9]" />
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" className="gap-2 rounded-full border-slate-200" onClick={() => setIsAddStructModalOpen(true)}>
+              <FolderPlus className="w-4 h-4 text-primary" />
               <span>Create Structure</span>
             </Button>
 
-            <Button variant="primary" className="gap-2" onClick={() => setIsAddRuleModalOpen(true)}>
+            <Button variant="primary" className="gap-2 shadow-fintech" onClick={() => setIsAddRuleModalOpen(true)}>
               <Plus className="w-4 h-4" />
               <span>Add Salary Rule</span>
             </Button>
@@ -241,21 +227,23 @@ export const SalaryStructuresPage: React.FC = () => {
         )}
       </div>
 
-      {/* Structure Selector Tabs */}
-      <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3 overflow-x-auto">
-        <div className="flex items-center gap-3">
+      {/* Structure Selector Pill Tabs */}
+      <div className="flex items-center justify-between border-b border-slate-200/80 pb-3 overflow-x-auto">
+        <div className="flex items-center gap-2">
           {structures.map((s) => (
             <button
               key={s.id}
               onClick={() => setSelectedStructureId(s.id)}
               className={`px-4 py-2 text-xs font-semibold rounded-full transition-all flex items-center gap-2 ${
                 s.id === selectedStructureId
-                  ? 'bg-[#5B4FE9] text-white shadow-sm'
-                  : 'bg-white border border-[#E5E7EB] text-[#6B7280] hover:bg-slate-50'
+                  ? 'bg-primary text-white shadow-glow'
+                  : 'bg-white border border-slate-200/80 text-slate-600 hover:bg-slate-50'
               }`}
             >
               <span>{s.name}</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${s.id === selectedStructureId ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                s.id === selectedStructureId ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+              }`}>
                 {s.rules?.length || 0} Rules
               </span>
             </button>
@@ -263,7 +251,7 @@ export const SalaryStructuresPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Rules Table */}
+      {/* Rules Table Daylight Card */}
       {currentStructure && (
         <Card
           title={`${currentStructure.name} — Sequenced Execution Rules`}
@@ -278,17 +266,31 @@ export const SalaryStructuresPage: React.FC = () => {
         </Card>
       )}
 
-      {/* Information Banner */}
-      <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl flex items-start gap-3 text-xs text-indigo-900">
-        <Info className="w-5 h-5 text-[#5B4FE9] shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <p className="font-semibold text-indigo-950">How Salary Rules calculate payroll for employee contracts:</p>
-          <ul className="list-disc list-inside space-y-0.5 text-indigo-800/90">
-            <li><strong>BASIC</strong>: Sets the base wage (e.g. Contract wage or fixed amount).</li>
-            <li><strong>ALLOWANCES</strong>: Added to Gross Salary (Fixed $ amount, % of Basic, or formula).</li>
-            <li><strong>DEDUCTIONS</strong>: Subtracted from Gross Salary to yield Net Payable Salary (PF, Income Tax, etc.).</li>
-            <li><strong>UNPAID LEAVES</strong>: Automatically prorated according to period attendance and time-off records.</li>
-          </ul>
+      {/* Information Flow Banner */}
+      <div className="p-4 bg-primary/5 border border-primary/20 rounded-[20px] flex items-start gap-3.5 text-xs text-slate-800 shadow-sm">
+        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 mt-0.5">
+          <Info className="w-4 h-4" />
+        </div>
+        <div className="space-y-1.5 flex-1">
+          <p className="font-bold text-[#12141F]">How Salary Rules calculate payroll for employee contracts:</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+            <div className="bg-white p-3 rounded-[14px] border border-slate-200/60 shadow-xs">
+              <span className="font-bold text-emerald-600 text-xs block mb-1">1. BASIC</span>
+              <p className="text-[11px] text-slate-600">Sets base wage from contract or standard tier amount.</p>
+            </div>
+            <div className="bg-white p-3 rounded-[14px] border border-slate-200/60 shadow-xs">
+              <span className="font-bold text-primary text-xs block mb-1">2. ALLOWANCES</span>
+              <p className="text-[11px] text-slate-600">Added to Gross: Fixed $, % of Basic, or formula variables.</p>
+            </div>
+            <div className="bg-white p-3 rounded-[14px] border border-slate-200/60 shadow-xs">
+              <span className="font-bold text-red-600 text-xs block mb-1">3. DEDUCTIONS</span>
+              <p className="text-[11px] text-slate-600">Subtracted from Gross: PF, Income Tax, Insurance withholdings.</p>
+            </div>
+            <div className="bg-white p-3 rounded-[14px] border border-slate-200/60 shadow-xs">
+              <span className="font-bold text-amber-600 text-xs block mb-1">4. UNPAID LEAVES</span>
+              <p className="text-[11px] text-slate-600">Prorated automatically from approved time-off logs.</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -327,7 +329,6 @@ export const SalaryStructuresPage: React.FC = () => {
           />
         </form>
       </Modal>
-
 
       {/* Add Rule Modal */}
       <Modal

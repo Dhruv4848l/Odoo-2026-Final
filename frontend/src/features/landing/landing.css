@@ -21,33 +21,33 @@ html.lenis, html.lenis body {
 
 /* ============================= TOKENS ============================= */
 :root {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  --primary: #5B4FE9;
-  --primary-dark: #3F35A8;
+  --primary: #5A5FE8;
+  --primary-dark: #4044CE;
   --primary-light: #EEF0FF;
-  --primary-rgb: 91, 79, 233;
-  --ink-navy: #14141F;
-  --canvas: #F6F6FB;
+  --primary-rgb: 90, 95, 232;
+  --ink-navy: #0F172A;
+  --canvas: #F8F9FD;
   --surface: #FFFFFF;
-  --surface-alt: #FBFBFF;
-  --ink: #1A1A2E;
-  --slate: #6B7280;
-  --slate-light: #9CA3AF;
-  --success: #16A34A;
-  --success-bg: #DCFCE7;
-  --warning: #D97706;
-  --warning-bg: #FEF3C7;
-  --danger: #DC2626;
-  --danger-bg: #FEE2E2;
-  --info: #2563EB;
-  --info-bg: #DBEAFE;
-  --border: #E5E7EB;
-  --nav-bg: rgba(255, 255, 255, 0.86);
-  --card-shadow: 0 4px 20px -2px rgba(16, 24, 40, 0.06);
-  --card-hover-shadow: 0 20px 40px -12px rgba(91, 79, 233, 0.16);
-  --lift-shadow: 0 24px 48px -16px rgba(91, 79, 233, 0.25);
+  --surface-alt: #F4F6FC;
+  --ink: #0F172A;
+  --slate: #64748B;
+  --slate-light: #94A3B8;
+  --success: #10B981;
+  --success-bg: #ECFDF5;
+  --warning: #F59E0B;
+  --warning-bg: #FFFBEB;
+  --danger: #EF4444;
+  --danger-bg: #FEF2F2;
+  --info: #06B6D4;
+  --info-bg: #ECFEFF;
+  --border: #E2E8F0;
+  --nav-bg: rgba(255, 255, 255, 0.88);
+  --card-shadow: 0 4px 20px -2px rgba(90, 95, 232, 0.06);
+  --card-hover-shadow: 0 20px 40px -12px rgba(90, 95, 232, 0.16);
+  --lift-shadow: 0 24px 48px -16px rgba(90, 95, 232, 0.22);
   --radius-pill: 9999px;
   --radius-lg: 20px;
   --radius-md: 14px;
@@ -55,23 +55,33 @@ html.lenis, html.lenis body {
   color-scheme: light;
 }
 
-[data-theme="dark"] {
-  --canvas: #09090F;
-  --surface: #12121A;
-  --surface-alt: #171722;
-  --ink: #F3F3FA;
-  --slate: #9499AB;
-  --slate-light: #646A7E;
-  --primary: #8279FF;
-  --primary-dark: #6B5FEF;
-  --primary-light: rgba(130, 121, 255, 0.14);
-  --primary-rgb: 130, 121, 255;
-  --border: rgba(255, 255, 255, 0.08);
-  --nav-bg: rgba(14, 14, 22, 0.85);
-  --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
-  --card-hover-shadow: 0 20px 40px -12px rgba(130, 121, 255, 0.22);
-  --lift-shadow: 0 24px 60px -16px rgba(130, 121, 255, 0.45);
-  color-scheme: dark;
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(3deg); }
+}
+@keyframes float-delayed {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.12; transform: scale(1); }
+  50% { opacity: 0.18; transform: scale(1.05); }
+}
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+.animate-float-delayed {
+  animation: float-delayed 7s ease-in-out infinite 1.5s;
+}
+.animate-bounce-subtle {
+  animation: bounce-subtle 4s ease-in-out infinite;
+}
+.animate-pulse-slow {
+  animation: pulse-slow 8s ease-in-out infinite;
 }
 
 .landing-body-wrap {

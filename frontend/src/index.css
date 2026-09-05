@@ -3,34 +3,73 @@
 @tailwind utilities;
 
 :root {
-  --primary-indigo: #5B4FE9;
-  --primary-dark: #3F35A8;
-  --primary-light: #EEF0FF;
-  --ink-navy: #14141F;
-  --text-primary: #1A1A2E;
-  --text-secondary: #6B7280;
-  --text-muted: #9CA3AF;
-  --bg-canvas: #F6F6FB;
-  --card-surface: #FFFFFF;
-  --border-grey: #E5E7EB;
+  --primary: #5A5FE8;
+  --primary-hover: #4C51DE;
+  --primary-dark: #4044CE;
+  --primary-fixed: #E1E0FF;
+  --primary-tint: #F4F5FF;
+
+  --midnight: #12141F;
+  --deck: #171A2A;
+  --deck-card: #1E2238;
+  --deck-nav: #1B1E30;
+
+  --surface: #F8F9FE;
+  --surface-card: #FFFFFF;
+  --surface-low: #F2F3F8;
+  --surface-high: #E7E8ED;
   
-  --success-green: #22C55E;
-  --success-tint: #DCFCE7;
-  --warning-amber: #F59E0B;
-  --warning-tint: #FEF3C7;
-  --danger-red: #EF4444;
-  --danger-tint: #FEE2E2;
-  --info-blue: #3B82F6;
-  --info-tint: #DBEAFE;
+  --text-primary: #191C1F;
+  --text-secondary: #5A5D72;
+  --text-muted: #94A3B8;
+  --border: #E2E8F0;
+
+  --emerald: #10B981;
+  --coral: #EF4444;
+  --amber: #F59E0B;
+  --cyan: #06B6D4;
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: var(--bg-canvas);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background-color: var(--surface);
   color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbars */
+/* Tabular Numbers for Currency and Statistical Readouts */
+.tabular-nums,
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Glassmorphic & Elevated FinTech Shadows */
+.shadow-fintech {
+  box-shadow: 0 4px 20px -2px rgba(90, 95, 232, 0.06), 0 2px 6px -1px rgba(27, 30, 48, 0.03);
+}
+
+.shadow-fintech-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.shadow-fintech-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -4px rgba(90, 95, 232, 0.12), 0 4px 10px -2px rgba(27, 30, 48, 0.06);
+}
+
+.shadow-glow {
+  box-shadow: 0 8px 24px -4px rgba(90, 95, 232, 0.40);
+}
+
+.shadow-glow-sm {
+  box-shadow: 0 4px 14px -2px rgba(90, 95, 232, 0.30);
+}
+
+.shadow-deck {
+  box-shadow: 0 20px 40px -8px rgba(18, 20, 31, 0.45);
+}
+
+/* Custom Clean Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -44,4 +83,21 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
+}
+
+/* Micro bar chart growth animation */
+@keyframes barRise {
+  from {
+    transform: scaleY(0);
+    opacity: 0.3;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.animate-bar-rise {
+  transform-origin: bottom;
+  animation: barRise 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
