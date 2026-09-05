@@ -25,7 +25,7 @@ export const TimeOffOverviewPage: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
 
       // Fetch Requests
       let reqUrl = '/api/v1/timeoff/requests';
@@ -64,7 +64,7 @@ export const TimeOffOverviewPage: React.FC = () => {
 
   const handleApprove = async (id: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
       const res = await fetch(`/api/v1/timeoff/requests/${id}/approve`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -80,7 +80,7 @@ export const TimeOffOverviewPage: React.FC = () => {
 
   const handleRefuse = async (id: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
       const res = await fetch(`/api/v1/timeoff/requests/${id}/refuse`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },

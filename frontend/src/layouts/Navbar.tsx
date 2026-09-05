@@ -90,57 +90,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Module Sub-Nav */}
-      <nav className="h-[48px] bg-white border-b border-[#E5E7EB] px-6 flex items-center gap-1 shadow-sm">
-        <NavLink
-          to="/employees"
-          className={({ isActive }) =>
-            `h-full px-4 flex items-center text-sm font-medium border-b-2 transition-colors ${
-              isActive
-                ? 'border-[#5B4FE9] text-[#5B4FE9]'
-                : 'border-transparent text-[#6B7280] hover:text-[#1A1A2E]'
-            }`
-          }
-        >
-          Employees & Contracts
-        </NavLink>
-        <NavLink
-          to="/attendance"
-          className={({ isActive }) =>
-            `h-full px-4 flex items-center text-sm font-medium border-b-2 transition-colors ${
-              isActive
-                ? 'border-[#5B4FE9] text-[#5B4FE9]'
-                : 'border-transparent text-[#6B7280] hover:text-[#1A1A2E]'
-            }`
-          }
-        >
-          Attendance & Time Off
-        </NavLink>
-        <NavLink
-          to="/payroll"
-          className={({ isActive }) =>
-            `h-full px-4 flex items-center text-sm font-medium border-b-2 transition-colors ${
-              isActive
-                ? 'border-[#5B4FE9] text-[#5B4FE9]'
-                : 'border-transparent text-[#6B7280] hover:text-[#1A1A2E]'
-            }`
-          }
-        >
-          Payroll & Payruns
-        </NavLink>
-        <NavLink
-          to="/dashboard"
-          className={({ isActive }) =>
-            `h-full px-4 flex items-center text-sm font-medium border-b-2 transition-colors ${
-              isActive
-                ? 'border-[#5B4FE9] text-[#5B4FE9]'
-                : 'border-transparent text-[#6B7280] hover:text-[#1A1A2E]'
-            }`
-          }
-        >
-          Dashboard & Analytics
-        </NavLink>
-      </nav>
     </header>
   );
 };

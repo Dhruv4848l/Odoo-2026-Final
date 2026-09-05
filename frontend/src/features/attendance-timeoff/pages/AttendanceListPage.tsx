@@ -20,7 +20,7 @@ export const AttendanceListPage: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
 
       // Fetch attendances
       let url = '/api/v1/attendance?';

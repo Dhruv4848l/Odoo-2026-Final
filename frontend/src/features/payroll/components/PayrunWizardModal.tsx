@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Input, Select } from '../../../components/ui/Input';
@@ -18,7 +18,7 @@ export interface PayrunWizardModalProps {
   }) => void;
 }
 
-const MOCK_ELIGIBLE_EMPLOYEES = [
+const FALLBACK_EMPLOYEES = [
   { id: 1, name: 'Amara Chen', department: 'Sales & Retail', position: 'Store Supervisor', contractWage: 5200 },
   { id: 2, name: 'Bhavna Patel', department: 'Human Resources', position: 'HR Specialist', contractWage: 4200 },
   { id: 3, name: 'David Vance', department: 'Engineering', position: 'Software Engineer', contractWage: 6500 },
@@ -36,13 +36,43 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
   const [structureId, setStructureId] = useState<number>(structures[0]?.id || 1);
   const [periodStart, setPeriodStart] = useState<string>('2026-10-01');
   const [periodEnd, setPeriodEnd] = useState<string>('2026-10-31');
+  const [employees, setEmployees] = useState<any[]>(FALLBACK_EMPLOYEES);
   const [selectedIds, setSelectedIds] = useState<number[]>([1, 2, 3, 4]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (structures.length > 0 && (!structureId || structureId === 1)) {
       setStructureId(structures[0].id);
     }
   }, [structures]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchEmployees();
+    }
+  }, [isOpen]);
+
+  const fetchEmployees = async () => {
+    try {
+      const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
+      const res = await fetch('/api/v1/employees', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const mapped = data.data.map((e: any, idx: number) => ({
+          id: idx + 1,
+          name: `${e.first_name} ${e.last_name}`,
+          department: e.department?.name || 'General',
+          position: e.job_position || 'Staff',
+          contractWage: 4500 + idx * 500,
+        }));
+        setEmployees(mapped);
+        setSelectedIds(mapped.map((m: any) => m.id));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch dynamic employees for Payrun wizard, using default fallback.', err);
+    }
+  };
 
   const toggleSelectEmployee = (id: number) => {
     if (selectedIds.includes(id)) {
@@ -53,10 +83,10 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === MOCK_ELIGIBLE_EMPLOYEES.length) {
+    if (selectedIds.length === employees.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(MOCK_ELIGIBLE_EMPLOYEES.map((e) => e.id));
+      setSelectedIds(employees.map((e) => e.id));
     }
   };
 
@@ -134,15 +164,15 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-[#E5E7EB]">
             <span className="text-xs font-semibold text-[#1A1A2E]">
-              {selectedIds.length} of {MOCK_ELIGIBLE_EMPLOYEES.length} employees selected
+              {selectedIds.length} of {employees.length} employees selected
             </span>
             <Button variant="ghost" size="sm" onClick={toggleSelectAll}>
-              {selectedIds.length === MOCK_ELIGIBLE_EMPLOYEES.length ? 'Deselect All' : 'Select All'}
+              {selectedIds.length === employees.length ? 'Deselect All' : 'Select All'}
             </Button>
           </div>
 
           <div className="divide-y divide-[#E5E7EB] border border-[#E5E7EB] rounded-lg max-h-60 overflow-y-auto bg-white">
-            {MOCK_ELIGIBLE_EMPLOYEES.map((emp) => (
+            {employees.map((emp) => (
               <label
                 key={emp.id}
                 className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 cursor-pointer"

@@ -27,7 +27,7 @@ export const AttendanceWidget: React.FC<AttendanceWidgetProps> = ({
 
   const fetchStatus = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
       const res = await fetch('/api/v1/attendance/current', {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -68,7 +68,7 @@ export const AttendanceWidget: React.FC<AttendanceWidgetProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
       const res = await fetch('/api/v1/attendance/check-in', {
         method: 'POST',
         headers: {
@@ -93,7 +93,7 @@ export const AttendanceWidget: React.FC<AttendanceWidgetProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
       const res = await fetch('/api/v1/attendance/check-out', {
         method: 'POST',
         headers: {

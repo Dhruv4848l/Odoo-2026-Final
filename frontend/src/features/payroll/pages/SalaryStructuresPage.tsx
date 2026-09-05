@@ -8,7 +8,14 @@ import { Modal } from '../../../components/ui/Modal';
 import { Input, Select } from '../../../components/ui/Input';
 import { PayrollApiClient, SalaryStructure, SalaryRule } from '../services/payrollApi';
 
+import { useAuth } from '../../../context/AuthContext';
+import { getNormalizedRole } from '../../../layouts/SubNav';
+
 export const SalaryStructuresPage: React.FC = () => {
+  const { user } = useAuth();
+  const normalizedRole = getNormalizedRole(user);
+  const canManageRules = ['admin', 'hr_payroll_manager'].includes(normalizedRole);
+
   const [structures, setStructures] = useState<SalaryStructure[]>([]);
   const [selectedStructureId, setSelectedStructureId] = useState<number>(1);
   const [isAddRuleModalOpen, setIsAddRuleModalOpen] = useState<boolean>(false);
@@ -52,45 +59,48 @@ export const SalaryStructuresPage: React.FC = () => {
 
   const currentStructure = structures.find((s) => s.id === selectedStructureId) || structures[0];
 
-  const handleCreateRule = (e: React.FormEvent) => {
+  const handleCreateRule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentStructure) return;
 
-    const createdRule: SalaryRule = {
-      id: Date.now(),
-      structure_id: currentStructure.id,
-      code: newRule.code.toUpperCase(),
-      name: newRule.name,
-      category: newRule.category,
-      sequence: Number(newRule.sequence),
-      computation_method: newRule.computation_method,
-      amount: newRule.amount ? Number(newRule.amount) : null,
-      formula: newRule.formula || null,
-      cap_amount: newRule.cap_amount ? Number(newRule.cap_amount) : null,
-      condition_expression: newRule.condition_expression || null,
-    };
+    try {
+      const created = await PayrollApiClient.createSalaryRule({
+        structure_id: currentStructure.id,
+        code: newRule.code.toUpperCase(),
+        name: newRule.name,
+        category: newRule.category,
+        sequence: Number(newRule.sequence),
+        computation_method: newRule.computation_method,
+        amount: newRule.amount ? Number(newRule.amount) : null,
+        formula: newRule.formula || null,
+        cap_amount: newRule.cap_amount ? Number(newRule.cap_amount) : null,
+        condition_expression: newRule.condition_expression || null,
+      });
 
-    const updated = structures.map((s) => {
-      if (s.id === currentStructure.id) {
-        const rules = [...(s.rules || []), createdRule].sort((a, b) => a.sequence - b.sequence);
-        return { ...s, rules };
-      }
-      return s;
-    });
+      const updated = structures.map((s) => {
+        if (s.id === currentStructure.id) {
+          const rules = [...(s.rules || []), created].sort((a, b) => a.sequence - b.sequence);
+          return { ...s, rules };
+        }
+        return s;
+      });
 
-    setStructures(updated);
-    setIsAddRuleModalOpen(false);
-    setNewRule({
-      code: '',
-      name: '',
-      category: 'ALLOWANCE',
-      sequence: 50,
-      computation_method: 'Percentage',
-      amount: '10',
-      formula: '',
-      cap_amount: '',
-      condition_expression: '',
-    });
+      setStructures(updated);
+      setIsAddRuleModalOpen(false);
+      setNewRule({
+        code: '',
+        name: '',
+        category: 'ALLOWANCE',
+        sequence: 50,
+        computation_method: 'Percentage',
+        amount: '10',
+        formula: '',
+        cap_amount: '',
+        condition_expression: '',
+      });
+    } catch (err) {
+      console.error('Error creating salary rule:', err);
+    }
   };
 
   const columns: Column<SalaryRule>[] = [
@@ -151,10 +161,14 @@ export const SalaryStructuresPage: React.FC = () => {
           <h1 className="text-xl font-bold text-[#1A1A2E]">Salary Structure Setup</h1>
           <p className="text-xs text-[#6B7280]">Configure sequenced salary rules, percentages, formulas, and caps</p>
         </div>
-        <Button variant="primary" className="gap-2" onClick={() => setIsAddRuleModalOpen(true)}>
-          <Plus className="w-4 h-4" />
-          <span>Add Salary Rule</span>
-        </Button>
+        {canManageRules ? (
+          <Button variant="primary" className="gap-2" onClick={() => setIsAddRuleModalOpen(true)}>
+            <Plus className="w-4 h-4" />
+            <span>Add Salary Rule</span>
+          </Button>
+        ) : (
+          <Badge variant="neutral" showDot={false}>Read-Only Access (HR Payroll User)</Badge>
+        )}
       </div>
 
       {/* Structure Selector Tabs */}

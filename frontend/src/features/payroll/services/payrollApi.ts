@@ -180,11 +180,12 @@ const MOCK_PAYSLIPS: PayslipDetail[] = [
 
 export class PayrollApiClient {
   private static async request<T>(endpoint: string, options?: RequestInit, fallbackData?: T): Promise<T> {
+    const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
     try {
       const res = await fetch(`/api/v1/payroll${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer demo-token',
+          'Authorization': `Bearer ${token}`,
         },
         ...options,
       });
@@ -204,6 +205,23 @@ export class PayrollApiClient {
 
   static async getStructures(): Promise<SalaryStructure[]> {
     return this.request('/structures', {}, MOCK_STRUCTURES);
+  }
+
+  static async createSalaryRule(rule: Partial<SalaryRule> & { structure_id: number }): Promise<SalaryRule> {
+    const fallbackRule: SalaryRule = {
+      id: Date.now(),
+      structure_id: rule.structure_id,
+      code: rule.code || 'RULE',
+      name: rule.name || 'Custom Salary Rule',
+      category: rule.category || 'ALLOWANCE',
+      sequence: rule.sequence || 50,
+      computation_method: rule.computation_method || 'Fixed',
+      amount: rule.amount ?? null,
+      formula: rule.formula ?? null,
+      cap_amount: rule.cap_amount ?? null,
+      condition_expression: rule.condition_expression ?? null,
+    };
+    return this.request('/rules', { method: 'POST', body: JSON.stringify(rule) }, fallbackRule);
   }
 
   static async getPayruns(): Promise<Payrun[]> {
@@ -249,44 +267,6 @@ export class PayrollApiClient {
 
     // Add to in-memory fallback list
     MOCK_PAYRUNS.unshift(newPayrun);
-
-    // Create mock payslips for selected employees
-    const empNames: Record<number, { name: string; dept: string; pos: string; wage: number }> = {
-      1: { name: 'Amara Chen', dept: 'Sales & Retail', pos: 'Store Supervisor', wage: 5200 },
-      2: { name: 'Bhavna Patel', dept: 'Human Resources', pos: 'HR Specialist', wage: 4200 },
-      3: { name: 'David Vance', dept: 'Engineering', pos: 'Software Engineer', wage: 6500 },
-      4: { name: 'Elena Rostova', dept: 'Finance', pos: 'Accountant', wage: 4800 },
-    };
-
-    for (const empId of payrun.selected_employee_ids) {
-      const emp = empNames[empId] || { name: `Employee #${empId}`, dept: 'General', pos: 'Staff', wage: 4500 };
-      const gross = Math.round(emp.wage * 1.4);
-      const net = Math.round(gross * 0.82);
-
-      MOCK_PAYSLIPS.push({
-        id: newId + empId,
-        payrun_id: newId,
-        payrun_name: payrun.name,
-        period_start: payrun.period_start,
-        period_end: payrun.period_end,
-        employee_id: empId,
-        employee_name: emp.name,
-        department_name: emp.dept,
-        job_position: emp.pos,
-        contract_wage: emp.wage,
-        basic_wage: emp.wage,
-        gross_wage: gross,
-        net_wage: net,
-        status: 'Draft',
-        lines: [
-          { rule_id: 101, code: 'BASIC', name: 'Basic Wage', category: 'BASIC', sequence: 10, amount: emp.wage },
-          { rule_id: 102, code: 'HRA', name: 'House Rent Allowance (40%)', category: 'ALLOWANCE', sequence: 20, amount: Math.round(emp.wage * 0.4) },
-          { rule_id: 103, code: 'TA', name: 'Transport Allowance', category: 'ALLOWANCE', sequence: 30, amount: 300 },
-          { rule_id: 105, code: 'PF', name: 'Provident Fund (Capped $1800)', category: 'DEDUCTION', sequence: 50, amount: Math.min(Math.round(emp.wage * 0.12), 1800) },
-          { rule_id: 106, code: 'TAX', name: 'Income Tax (10%)', category: 'DEDUCTION', sequence: 60, amount: Math.round(gross * 0.1) },
-        ],
-      });
-    }
 
     return this.request('/payruns', { method: 'POST', body: JSON.stringify(payrun) }, newPayrun);
   }

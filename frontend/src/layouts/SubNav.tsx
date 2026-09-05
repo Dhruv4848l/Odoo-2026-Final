@@ -3,24 +3,35 @@ import { NavLink } from 'react-router-dom';
 import { Users, FileText, Calendar, Clock, DollarSign, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+export function getNormalizedRole(user: any): string {
+  if (!user) return 'employee';
+  const roleStr = user.role?.id || user.role?.name || user.role || '';
+  const r = String(roleStr).toLowerCase().trim().replace(/\s+/g, '_');
+  if (r.includes('admin')) return 'admin';
+  if (r.includes('payroll_manager') || r.includes('payroll_mgr')) return 'hr_payroll_manager';
+  if (r.includes('payroll_user') || r.includes('payroll_usr')) return 'hr_payroll_user';
+  if (r.includes('hr_manager') || r.includes('hr_mgr')) return 'hr_manager';
+  return 'employee';
+}
+
 export const SubNav: React.FC = () => {
   const { user } = useAuth();
-  const role = user?.role?.id || 'employee';
+  const normalizedRole = getNormalizedRole(user);
 
   const navItems = [
-    { name: 'Employees', path: '/employees', icon: Users, roles: ['admin', 'hr_manager', 'hr_payroll_user', 'hr_payroll_manager', 'employee'] },
-    { name: 'Contracts', path: '/contracts', icon: FileText, roles: ['admin', 'hr_manager', 'hr_payroll_user', 'hr_payroll_manager'] },
-    { name: 'Working Schedules', path: '/schedules', icon: Calendar, roles: ['admin', 'hr_manager', 'hr_payroll_user', 'hr_payroll_manager'] },
-    { name: 'Attendance', path: '/attendance', icon: Clock, roles: ['admin', 'hr_manager', 'hr_payroll_user', 'hr_payroll_manager', 'employee'] },
-    { name: 'Time Off', path: '/timeoff', icon: Calendar, roles: ['admin', 'hr_manager', 'hr_payroll_user', 'hr_payroll_manager', 'employee'] },
-    { name: 'Payroll', path: '/payroll', icon: DollarSign, roles: ['admin', 'hr_payroll_user', 'hr_payroll_manager'] },
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'hr_payroll_user', 'hr_payroll_manager'] },
+    { name: 'Employees', path: '/employees', icon: Users, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user', 'hr_manager', 'employee'] },
+    { name: 'Contracts', path: '/contracts', icon: FileText, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user', 'hr_manager'] },
+    { name: 'Working Schedules', path: '/schedules', icon: Calendar, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user', 'hr_manager'] },
+    { name: 'Attendance', path: '/attendance', icon: Clock, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user', 'hr_manager', 'employee'] },
+    { name: 'Time Off', path: '/timeoff', icon: Calendar, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user', 'hr_manager', 'employee'] },
+    { name: 'Payroll & Payruns', path: '/payroll', icon: DollarSign, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user'] },
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'hr_payroll_manager', 'hr_payroll_user'] },
   ];
 
-  const visibleItems = navItems.filter((item) => item.roles.includes(role));
+  const visibleItems = navItems.filter((item) => item.roles.includes(normalizedRole));
 
   return (
-    <nav className="h-12 bg-white border-b border-border px-6 flex items-center gap-6 shadow-xs overflow-x-auto">
+    <nav className="h-12 bg-white border-b border-[#E5E7EB] px-6 flex items-center gap-6 shadow-sm overflow-x-auto">
       {visibleItems.map((item) => {
         const Icon = item.icon;
         return (
@@ -30,8 +41,8 @@ export const SubNav: React.FC = () => {
             className={({ isActive }) =>
               `flex items-center gap-2 h-full text-sm font-semibold border-b-2 transition-all px-1 ${
                 isActive
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-slate hover:text-ink'
+                  ? 'border-[#5B4FE9] text-[#5B4FE9]'
+                  : 'border-transparent text-[#6B7280] hover:text-[#1A1A2E]'
               }`
             }
           >

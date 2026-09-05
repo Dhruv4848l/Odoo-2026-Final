@@ -40,7 +40,7 @@ export const ManualAttendanceModal: React.FC<ManualAttendanceModalProps> = ({
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
       const isEdit = Boolean(existingAttendance);
       const url = isEdit ? `/api/v1/attendance/${existingAttendance.id}` : '/api/v1/attendance';
       const method = isEdit ? 'PUT' : 'POST';

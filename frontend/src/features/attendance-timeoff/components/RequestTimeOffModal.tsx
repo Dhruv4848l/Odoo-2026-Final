@@ -61,7 +61,7 @@ export const RequestTimeOffModal: React.FC<RequestTimeOffModalProps> = ({
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
       const res = await fetch('/api/v1/timeoff/requests', {
         method: 'POST',
         headers: {

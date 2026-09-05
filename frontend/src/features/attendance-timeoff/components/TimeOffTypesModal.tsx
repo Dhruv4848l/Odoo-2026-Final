@@ -25,7 +25,7 @@ export const TimeOffTypesModal: React.FC<TimeOffTypesModalProps> = ({ isOpen, on
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('pp360_token') || localStorage.getItem('token') || 'demo-token';
       const res = await fetch('/api/v1/timeoff/types', {
         method: 'POST',
         headers: {

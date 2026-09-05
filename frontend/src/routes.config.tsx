@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate, RouteObject } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Navbar } from './layouts/Navbar';
-import { SubNav } from './layouts/SubNav';
+import { SubNav, getNormalizedRole } from './layouts/SubNav';
 import { LoginPage } from './features/auth-employee/pages/LoginPage';
 import { EmployeeKanbanPage } from './features/auth-employee/pages/EmployeeKanbanPage';
 import { EmployeeFormPage } from './features/auth-employee/pages/EmployeeFormPage';
@@ -17,11 +17,29 @@ import { SalaryStructuresPage } from './features/payroll/pages/SalaryStructuresP
 import { LandingPage } from './features/landing/pages/LandingPage';
 import { payrollRoutes } from './features/payroll/payroll.routes';
 
-// Protected Layout Shell
-const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ALL_ROLES = ['admin', 'hr_payroll_manager', 'hr_payroll_user', 'hr_manager', 'employee'];
+const HR_ROLES = ['admin', 'hr_payroll_manager', 'hr_payroll_user', 'hr_manager'];
+const PAYROLL_ROLES = ['admin', 'hr_payroll_manager', 'hr_payroll_user'];
+
+// Protected Layout Shell with RBAC Guarding
+const ProtectedLayout: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({
+  children,
+  allowedRoles = ALL_ROLES,
+}) => {
   const { user } = useAuth();
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  const normalizedRole = getNormalizedRole(user);
+
+  if (allowedRoles && !allowedRoles.includes(normalizedRole)) {
+    let fallbackPath = '/employees';
+    if (normalizedRole === 'employee') fallbackPath = '/attendance';
+    if (normalizedRole === 'hr_manager') fallbackPath = '/employees';
+    if (PAYROLL_ROLES.includes(normalizedRole)) fallbackPath = '/payroll';
+
+    return <Navigate to={fallbackPath} replace />;
   }
 
   return (
@@ -33,17 +51,26 @@ const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
   );
 };
 
+const RootRedirect: React.FC = () => {
+  const { user } = useAuth();
+  if (!user) return <LandingPage />;
+  const normalizedRole = getNormalizedRole(user);
+  if (normalizedRole === 'employee') return <Navigate to="/attendance" replace />;
+  if (normalizedRole === 'hr_manager') return <Navigate to="/employees" replace />;
+  return <Navigate to="/payroll" replace />;
+};
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
 
       {/* Dev A Modules */}
       <Route
         path="/employees"
         element={
-          <ProtectedLayout>
+          <ProtectedLayout allowedRoles={ALL_ROLES}>
             <EmployeeKanbanPage />
           </ProtectedLayout>
         }
@@ -51,7 +78,7 @@ export const AppRoutes: React.FC = () => {
       <Route
         path="/employees/:id"
         element={
-          <ProtectedLayout>
+          <ProtectedLayout allowedRoles={ALL_ROLES}>
             <EmployeeFormPage />
           </ProtectedLayout>
         }
@@ -59,7 +86,7 @@ export const AppRoutes: React.FC = () => {
       <Route
         path="/contracts"
         element={
-          <ProtectedLayout>
+          <ProtectedLayout allowedRoles={HR_ROLES}>
             <ContractListPage />
           </ProtectedLayout>
         }
@@ -67,7 +94,7 @@ export const AppRoutes: React.FC = () => {
       <Route
         path="/schedules"
         element={
-          <ProtectedLayout>
+          <ProtectedLayout allowedRoles={HR_ROLES}>
             <SchedulePage />
           </ProtectedLayout>
         }
@@ -77,7 +104,7 @@ export const AppRoutes: React.FC = () => {
       <Route
         path="/attendance"
         element={
-          <ProtectedLayout>
+          <ProtectedLayout allowedRoles={ALL_ROLES}>
             <AttendanceListPage />
           </ProtectedLayout>
         }
@@ -85,17 +112,17 @@ export const AppRoutes: React.FC = () => {
       <Route
         path="/timeoff"
         element={
-          <ProtectedLayout>
+          <ProtectedLayout allowedRoles={ALL_ROLES}>
             <TimeOffOverviewPage />
           </ProtectedLayout>
         }
       />
 
-      {/* Dev C Modules */}
+      {/* Dev C Modules — Blocked for HR Manager & Employee */}
       <Route
         path="/payroll"
         element={
-          <ProtectedLayout>
+          <ProtectedLayout allowedRoles={PAYROLL_ROLES}>
             <PayrunsListPage />
           </ProtectedLayout>
         }
@@ -103,7 +130,7 @@ export const AppRoutes: React.FC = () => {
       <Route
         path="/payroll/structures"
         element={
-          <ProtectedLayout>
+          <ProtectedLayout allowedRoles={PAYROLL_ROLES}>
             <SalaryStructuresPage />
           </ProtectedLayout>
         }
@@ -111,17 +138,17 @@ export const AppRoutes: React.FC = () => {
       <Route
         path="/payroll/payruns/:id"
         element={
-          <ProtectedLayout>
+          <ProtectedLayout allowedRoles={PAYROLL_ROLES}>
             <PayrunProcessingPage />
           </ProtectedLayout>
         }
       />
 
-      {/* Dev D Module */}
+      {/* Dev D Module — Blocked for HR Manager & Employee */}
       <Route
         path="/dashboard"
         element={
-          <ProtectedLayout>
+          <ProtectedLayout allowedRoles={PAYROLL_ROLES}>
             <PayrollDashboardPage />
           </ProtectedLayout>
         }
