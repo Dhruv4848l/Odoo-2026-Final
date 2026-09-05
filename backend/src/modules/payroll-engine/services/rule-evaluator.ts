@@ -6,7 +6,7 @@ export interface EvaluationContext {
   TOTAL_WORKING_DAYS: number;
   OVERTIME_HOURS: number;
   UNPAID_LEAVE_DAYS: number;
-  [key: string]: number;
+  [key: string]: number | string;
 }
 
 export interface SalaryRuleDefinition {
@@ -30,24 +30,16 @@ export class RuleEvaluator {
     if (!expr || expr.trim() === '') return 0;
 
     let sanitized = expr;
-
-    // Replace variable names with their numerical values from context
-    // Sort keys by length descending to prevent replacing substrings of longer variables
-    const sortedKeys = Object.keys(context).sort((a, b) => b.length - a.length);
-    for (const key of sortedKeys) {
-      const val = context[key] ?? 0;
-      const regex = new RegExp(`\\b${key}\\b`, 'g');
-      sanitized = sanitized.replace(regex, String(val));
-    }
-
     // Replace min and max helper syntax
     sanitized = sanitized.replace(/min\(([^,]+),([^)]+)\)/gi, 'Math.min($1, $2)');
     sanitized = sanitized.replace(/max\(([^,]+),([^)]+)\)/gi, 'Math.max($1, $2)');
 
     try {
-      // Evaluate mathematical expression in a restricted scope
-      const fn = new Function('Math', `return (${sanitized});`);
-      const result = fn(Math);
+      const keys = Object.keys(context);
+      const values = Object.values(context);
+      // Evaluate mathematical expression passing context keys as variable names
+      const fn = new Function('Math', ...keys, `return (${sanitized});`);
+      const result = fn(Math, ...values);
       return typeof result === 'number' && !isNaN(result) ? result : 0;
     } catch (err) {
       console.error(`RuleEvaluator error evaluating expression [${expr}] -> [${sanitized}]:`, err);
@@ -99,21 +91,17 @@ export class RuleEvaluator {
   }
 
   /**
-   * Evaluates boolean conditions (e.g. "OVERTIME_HOURS > 0")
+   * Evaluates boolean conditions (e.g. "OVERTIME_HOURS > 0" or "job_position == 'Store Supervisor'")
    */
   private static evaluateCondition(condExpr: string, context: EvaluationContext): boolean {
-    let sanitized = condExpr;
-    const sortedKeys = Object.keys(context).sort((a, b) => b.length - a.length);
-    for (const key of sortedKeys) {
-      const val = context[key] ?? 0;
-      const regex = new RegExp(`\\b${key}\\b`, 'g');
-      sanitized = sanitized.replace(regex, String(val));
-    }
     try {
-      const fn = new Function(`return Boolean(${sanitized});`);
-      return Boolean(fn());
-    } catch {
-      return true;
+      const keys = Object.keys(context);
+      const values = Object.values(context);
+      const fn = new Function(...keys, `return Boolean(${condExpr});`);
+      return Boolean(fn(...values));
+    } catch (err) {
+      console.error(`RuleEvaluator error evaluating condition [${condExpr}]:`, err);
+      return false; // Safest default is false if condition fails to evaluate
     }
   }
 }

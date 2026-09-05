@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { SalaryStructureService } from './services/salary-structure.service';
 import { PayrunService } from './services/payrun.service';
 import { PayslipService } from './services/payslip.service';
+import { PdfGeneratorService } from './services/pdf-generator.service';
 
 export class PayrollController {
   // Salary Structures & Rules
@@ -144,6 +145,24 @@ export class PayrollController {
       const payrunId = parseInt(req.params.payrunId);
       const payslips = await PayslipService.getPayslipsByPayrunId(payrunId);
       res.json({ success: true, data: payslips });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+    }
+  }
+
+  static async downloadPayslipPdf(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      const payslip = await PayslipService.getPayslipById(id);
+      if (!payslip) {
+        return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Payslip not found' } });
+      }
+
+      const pdfBuffer = await PdfGeneratorService.generatePayslipPdf(payslip);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=payslip-${payslip.id}.pdf`);
+      res.send(pdfBuffer);
     } catch (err: any) {
       res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
     }

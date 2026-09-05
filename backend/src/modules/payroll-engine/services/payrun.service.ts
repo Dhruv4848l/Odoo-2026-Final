@@ -77,6 +77,16 @@ export class PayrunService {
     period_end: string,
     selected_employee_ids: number[]
   ): Promise<Payrun> {
+    // 0. Duplicate Payrun Validation (Phase 2 Edge Case)
+    const existingRes = await query(
+      `SELECT id FROM payruns 
+       WHERE structure_id = $1 AND period_start = $2 AND period_end = $3`,
+      [structure_id, period_start, period_end]
+    );
+    if (existingRes.rows && existingRes.rows.length > 0) {
+      throw new Error('A payrun for this structure and period already exists.');
+    }
+
     // 1. Insert Payrun batch record
     const payrunRes = await query(
       `INSERT INTO payruns (name, structure_id, period_start, period_end, status)
@@ -115,11 +125,13 @@ export class PayrunService {
     for (const empId of empIdsToProcess) {
       // Find contract active on the last day of period
       const contractRes = await query(
-        `SELECT * FROM contracts 
-         WHERE employee_id = $1 
-           AND start_date <= $2 
-           AND (end_date IS NULL OR end_date >= $2)
-         ORDER BY start_date DESC LIMIT 1`,
+        `SELECT c.*, e.job_position 
+         FROM contracts c
+         JOIN employees e ON c.employee_id = e.id
+         WHERE c.employee_id = $1 
+           AND c.start_date <= $2 
+           AND (c.end_date IS NULL OR c.end_date >= $2)
+         ORDER BY c.start_date DESC LIMIT 1`,
         [empId, payrun.period_end]
       );
 
@@ -147,6 +159,26 @@ export class PayrunService {
         0
       );
 
+      // Calculate Overtime and Unpaid Leave Days dynamically
+      const overtimeRes = await query(`
+        SELECT COALESCE(SUM(overtime_hours), 0)::float as total_overtime
+        FROM attendances
+        WHERE employee_id = $1 AND check_in >= $2 AND check_in <= $3
+      `, [empId, payrun.period_start, `${payrun.period_end} 23:59:59`]);
+      const overtimeHours = overtimeRes.rows[0]?.total_overtime || 0;
+
+      const unpaidRes = await query(`
+        SELECT COALESCE(SUM(tor.requested_amount), 0)::float as unpaid_days
+        FROM time_off_requests tor
+        JOIN time_off_types tot ON tor.time_off_type_id = tot.id
+        WHERE tor.employee_id = $1 
+          AND tor.status = 'Approved'
+          AND tor.start_date >= $2 
+          AND tor.end_date <= $3
+          AND tot.is_paid = false
+      `, [empId, payrun.period_start, payrun.period_end]);
+      const unpaidLeaveDays = unpaidRes.rows[0]?.unpaid_days || 0;
+
       // Build evaluation context
       const context: EvaluationContext = {
         BASIC: proration.proratedBasicWage,
@@ -154,8 +186,9 @@ export class PayrunService {
         GROSS: proration.proratedBasicWage,
         WORKED_DAYS: proration.workedDays,
         TOTAL_WORKING_DAYS: proration.totalWorkingDays,
-        OVERTIME_HOURS: 0,
-        UNPAID_LEAVE_DAYS: 0,
+        OVERTIME_HOURS: overtimeHours,
+        UNPAID_LEAVE_DAYS: unpaidLeaveDays,
+        job_position: rawContract.job_position || 'Staff',
       };
 
       // Compute Rules in strict sequence order

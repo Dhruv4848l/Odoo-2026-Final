@@ -7,6 +7,8 @@ import { Badge } from '../../../components/ui/Badge';
 import { Table, Column } from '../../../components/ui/Table';
 import { PayslipDetailModal } from '../components/PayslipDetailModal';
 import { PayrollApiClient, Payrun, PayslipDetail } from '../services/payrollApi';
+import { useAuth } from '../../../context/AuthContext';
+import { getNormalizedRole } from '../../../layouts/SubNav';
 
 const fmt = (val: any): string => {
   const num = Number(val);
@@ -18,6 +20,9 @@ export const PayrunProcessingPage: React.FC = () => {
   const navigate = useNavigate();
   const [payrun, setPayrun] = useState<Payrun | null>(null);
   const [payslips, setPayslips] = useState<PayslipDetail[]>([]);
+  const { user } = useAuth();
+  const normalizedRole = getNormalizedRole(user);
+  const canEdit = ['admin', 'hr_payroll_manager'].includes(normalizedRole);
   const [selectedPayslip, setSelectedPayslip] = useState<PayslipDetail | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
@@ -157,22 +162,21 @@ export const PayrunProcessingPage: React.FC = () => {
 
         {/* Action Row */}
         <div className="flex items-center gap-3">
-          {payrun.status === 'Draft' && (
-            <Button variant="finalize" onClick={handleValidate} className="gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-              <span>Validate Payrun</span>
+          {payrun?.status === 'Draft' && canEdit && (
+            <Button variant="primary" className="gap-2" onClick={handleValidate}>
+              <CheckCircle className="w-4 h-4" /> Validate Payrun
             </Button>
           )}
-          {payrun.status === 'Validated' && (
-            <Button variant="finalize" onClick={handleMarkPaid} className="gap-2">
-              <DollarSign className="w-4 h-4 text-emerald-400" />
-              <span>Mark Paid</span>
+          {payrun?.status === 'Validated' && canEdit && (
+            <Button variant="primary" className="gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={handleMarkPaid}>
+              <DollarSign className="w-4 h-4" /> Mark as Paid
             </Button>
           )}
-          <Button variant="primary" onClick={handleSendPayslips} className="gap-2">
-            <Send className="w-4 h-4" />
-            <span>Send Payslips (Bulk Email)</span>
-          </Button>
+          {payrun?.status === 'Paid' && canEdit && (
+            <Button variant="outline" className="gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50" onClick={handleSendPayslips}>
+              <Send className="w-4 h-4" /> Disburse Payslips (Email)
+            </Button>
+          )}
         </div>
       </div>
 

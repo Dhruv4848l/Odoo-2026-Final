@@ -27,6 +27,7 @@ router.post('/payruns/:id/send-payslips', requireRoles(['HR Payroll Manager', 'A
 
 // Payslips
 router.get('/payslips/:id', requireRoles(payrollRoles), PayrollController.getPayslipById);
+router.get('/payslips/:id/pdf', requireRoles(payrollRoles), PayrollController.downloadPayslipPdf);
 router.get('/payruns/:payrunId/payslips', requireRoles(payrollRoles), PayrollController.getPayslipsByPayrun);
 
 export default router;

@@ -7,6 +7,8 @@ import { Badge } from '../../../components/ui/Badge';
 import { Table, Column } from '../../../components/ui/Table';
 import { PayrunWizardModal } from '../components/PayrunWizardModal';
 import { PayrollApiClient, Payrun, SalaryStructure } from '../services/payrollApi';
+import { useAuth } from '../../../context/AuthContext';
+import { getNormalizedRole } from '../../../layouts/SubNav';
 
 const fmt = (val: any): string => {
   const num = Number(val);
@@ -18,6 +20,9 @@ export const PayrunsListPage: React.FC = () => {
   const [payruns, setPayruns] = useState<Payrun[]>([]);
   const [structures, setStructures] = useState<SalaryStructure[]>([]);
   const [isWizardOpen, setIsWizardOpen] = useState<boolean>(false);
+  const { user } = useAuth();
+  const normalizedRole = getNormalizedRole(user);
+  const canCreate = ['admin', 'hr_payroll_manager'].includes(normalizedRole);
 
   useEffect(() => {
     loadData();
@@ -112,10 +117,12 @@ export const PayrunsListPage: React.FC = () => {
           <h1 className="text-xl font-bold text-[#1A1A2E]">Payruns & Payroll Batches</h1>
           <p className="text-xs text-[#6B7280]">Process monthly payruns, validate salary calculations, and disburse payslips</p>
         </div>
-        <Button variant="primary" className="gap-2" onClick={() => setIsWizardOpen(true)}>
-          <Plus className="w-4 h-4" />
-          <span>Create New Payrun</span>
-        </Button>
+        {canCreate && (
+          <Button variant="primary" className="gap-2" onClick={() => setIsWizardOpen(true)}>
+            <Plus className="w-4 h-4" />
+            <span>Create New Payrun</span>
+          </Button>
+        )}
       </div>
 
       {/* Payruns List Table */}

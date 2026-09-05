@@ -377,6 +377,36 @@ router.put('/contracts/:id', authMiddleware, requireRole(['admin', 'hr_manager',
   const { id } = req.params;
   const { contract_name, job_position, wage, start_date, end_date, status, working_schedule_id, salary_structure_id } = req.body;
 
+  const existingRes = await query('SELECT * FROM contracts WHERE id = $1', [Number(id)]);
+  const existing = existingRes.rows?.[0];
+  if (!existing) {
+    return res.status(404).json({ success: false, error: { message: 'Contract not found.' } });
+  }
+
+  const newStartDate = start_date || existing.start_date;
+  const newEndDate = end_date !== undefined ? end_date : existing.end_date;
+  const newStatus = status || existing.status;
+
+  if (newStatus === 'running') {
+    const overlapRes = await query(
+      `SELECT id, contract_name, start_date, end_date FROM contracts
+       WHERE employee_id = $1 AND status = 'running' AND id != $2
+         AND start_date <= $4 AND (end_date IS NULL OR end_date >= $3)`,
+      [existing.employee_id, Number(id), newStartDate, newEndDate || '9999-12-31']
+    );
+
+    if (overlapRes.rows && overlapRes.rows.length > 0) {
+      const conflict = overlapRes.rows[0];
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'OVERLAPPING_ACTIVE_CONTRACT',
+          message: `Validation Error: Employee already has an active running contract (${conflict.contract_name}) covering the requested period. End the existing contract first.`,
+        },
+      });
+    }
+  }
+
   const result = await query(
     `UPDATE contracts SET
        contract_name = COALESCE($1, contract_name),

@@ -71,7 +71,7 @@ router.get('/allocations', authMiddleware, async (req: AuthenticatedRequest, res
     SELECT a.*,
            e.first_name, e.last_name,
            t.name AS type_name, t.display_color,
-           GREATEST(0, a.allocated - a.taken) AS remaining,
+           CASE WHEN a.valid_until < CURRENT_DATE THEN 0 ELSE GREATEST(0, a.allocated - a.taken) END AS remaining,
            CASE WHEN a.valid_until < CURRENT_DATE THEN true ELSE false END AS is_expired
     FROM time_off_allocations a
     JOIN employees e ON a.employee_id = e.id
@@ -113,7 +113,7 @@ router.get('/allocations/my', authMiddleware, async (req: AuthenticatedRequest, 
   const result = await query(`
     SELECT a.*,
            t.name AS type_name, t.display_color,
-           GREATEST(0, a.allocated - a.taken) AS remaining,
+           CASE WHEN a.valid_until < CURRENT_DATE THEN 0 ELSE GREATEST(0, a.allocated - a.taken) END AS remaining,
            CASE WHEN a.valid_until < CURRENT_DATE THEN true ELSE false END AS is_expired
     FROM time_off_allocations a
     JOIN time_off_types t ON a.time_off_type_id = t.id

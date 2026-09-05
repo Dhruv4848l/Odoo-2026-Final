@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   DollarSign, Users, AlertTriangle, TrendingUp, Clock, Calendar,
   Building2, ShieldCheck, Mail, FileText, ChevronDown, RefreshCw
 } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
 
@@ -72,6 +74,7 @@ async function fetchDashboard(endpoint: string, period?: string, dept?: string) 
 }
 
 export const PayrollDashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [deptSalary, setDeptSalary] = useState<DeptSalary[]>([]);
@@ -495,10 +498,17 @@ export const PayrollDashboardPage: React.FC = () => {
             {alerts.map((alert, i) => (
               <div
                 key={i}
-                className={`flex items-center gap-3 p-3 rounded-lg border text-xs font-semibold ${severityStyles[alert.severity] || severityStyles.info}`}
+                className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border text-xs font-semibold ${severityStyles[alert.severity] || severityStyles.info}`}
               >
-                {severityIcons[alert.severity] || severityIcons.info}
-                <span>{alert.message}</span>
+                <div className="flex items-center gap-3">
+                  {severityIcons[alert.severity] || severityIcons.info}
+                  <span>{alert.message}</span>
+                </div>
+                {alert.type === 'MISSING_CHECKOUT' && (
+                  <Button variant="outline" size="sm" onClick={() => navigate('/attendance')} className="bg-white">
+                    Resolve Now
+                  </Button>
+                )}
               </div>
             ))}
           </div>
