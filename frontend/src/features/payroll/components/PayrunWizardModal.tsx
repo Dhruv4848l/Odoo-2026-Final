@@ -1,0 +1,173 @@
+import React, { useState } from 'react';
+import { Modal } from '../../../components/ui/Modal';
+import { Button } from '../../../components/ui/Button';
+import { Input, Select } from '../../../components/ui/Input';
+import { Badge } from '../../../components/ui/Badge';
+import { SalaryStructure } from '../services/payrollApi';
+
+export interface PayrunWizardModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  structures: SalaryStructure[];
+  onSubmit: (data: {
+    name: string;
+    structure_id: number;
+    period_start: string;
+    period_end: string;
+    selected_employee_ids: number[];
+  }) => void;
+}
+
+const MOCK_ELIGIBLE_EMPLOYEES = [
+  { id: 1, name: 'Amara Chen', department: 'Sales & Retail', position: 'Store Supervisor', contractWage: 5200 },
+  { id: 2, name: 'Bhavna Patel', department: 'Human Resources', position: 'HR Specialist', contractWage: 4200 },
+  { id: 3, name: 'David Vance', department: 'Engineering', position: 'Software Engineer', contractWage: 6500 },
+  { id: 4, name: 'Elena Rostova', department: 'Finance', position: 'Accountant', contractWage: 4800 },
+];
+
+export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
+  isOpen,
+  onClose,
+  structures,
+  onSubmit,
+}) => {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [name, setName] = useState<string>('October 2026 Regular Payrun');
+  const [structureId, setStructureId] = useState<number>(structures[0]?.id || 1);
+  const [periodStart, setPeriodStart] = useState<string>('2026-10-01');
+  const [periodEnd, setPeriodEnd] = useState<string>('2026-10-31');
+  const [selectedIds, setSelectedIds] = useState<number[]>([1, 2, 3, 4]);
+
+  React.useEffect(() => {
+    if (structures.length > 0 && (!structureId || structureId === 1)) {
+      setStructureId(structures[0].id);
+    }
+  }, [structures]);
+
+  const toggleSelectEmployee = (id: number) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter((item) => item !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === MOCK_ELIGIBLE_EMPLOYEES.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(MOCK_ELIGIBLE_EMPLOYEES.map((e) => e.id));
+    }
+  };
+
+  const handleNext = () => {
+    setStep(2);
+  };
+
+  const handleFinish = () => {
+    onSubmit({
+      name,
+      structure_id: Number(structureId),
+      period_start: periodStart,
+      period_end: periodEnd,
+      selected_employee_ids: selectedIds,
+    });
+    onClose();
+    setStep(1);
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={step === 1 ? 'New Payrun Wizard — Step 1: Scope & Period' : 'New Payrun Wizard — Step 2: Employee Selection'}
+      subtitle={step === 1 ? 'Define payrun batch name, structure, and pay period dates' : 'Select eligible employees for this pay period'}
+      footer={
+        <>
+          {step === 2 && (
+            <Button variant="secondary" onClick={() => setStep(1)}>Back</Button>
+          )}
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          {step === 1 ? (
+            <Button variant="primary" onClick={handleNext}>Continue to Employees →</Button>
+          ) : (
+            <Button variant="primary" onClick={handleFinish} disabled={selectedIds.length === 0}>
+              Create & Compute Payrun ({selectedIds.length})
+            </Button>
+          )}
+        </>
+      }
+    >
+      {step === 1 ? (
+        <div className="space-y-4">
+          <Input
+            label="Payrun Batch Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. October 2026 Regular Payrun"
+            required
+          />
+          <Select
+            label="Salary Structure"
+            value={structureId}
+            onChange={(e) => setStructureId(Number(e.target.value))}
+            options={structures.map((s) => ({ value: s.id, label: s.name }))}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Period Start Date"
+              type="date"
+              value={periodStart}
+              onChange={(e) => setPeriodStart(e.target.value)}
+              required
+            />
+            <Input
+              label="Period End Date"
+              type="date"
+              value={periodEnd}
+              onChange={(e) => setPeriodEnd(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-[#E5E7EB]">
+            <span className="text-xs font-semibold text-[#1A1A2E]">
+              {selectedIds.length} of {MOCK_ELIGIBLE_EMPLOYEES.length} employees selected
+            </span>
+            <Button variant="ghost" size="sm" onClick={toggleSelectAll}>
+              {selectedIds.length === MOCK_ELIGIBLE_EMPLOYEES.length ? 'Deselect All' : 'Select All'}
+            </Button>
+          </div>
+
+          <div className="divide-y divide-[#E5E7EB] border border-[#E5E7EB] rounded-lg max-h-60 overflow-y-auto bg-white">
+            {MOCK_ELIGIBLE_EMPLOYEES.map((emp) => (
+              <label
+                key={emp.id}
+                className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(emp.id)}
+                    onChange={() => toggleSelectEmployee(emp.id)}
+                    className="w-4 h-4 text-[#5B4FE9] rounded border-slate-300 focus:ring-[#5B4FE9]"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-[#1A1A2E]">{emp.name}</p>
+                    <p className="text-[11px] text-[#6B7280]">{emp.position}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant="neutral" showDot={false}>{emp.department}</Badge>
+                  <span className="font-mono text-xs font-semibold text-[#14141F]">${emp.contractWage}</span>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+};
