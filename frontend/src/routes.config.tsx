@@ -34,6 +34,7 @@ const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
 
       {/* Dev A Modules */}
@@ -117,7 +118,7 @@ export const AppRoutes: React.FC = () => {
       />
 
       {/* Default Fallback */}
-      <Route path="*" element={<Navigate to="/employees" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
