@@ -1,1 +1,16 @@
-{"name":"peoplepay360","private":true,"workspaces":["frontend","backend"],"dependencies":{"pg":"^8.23.0"}}
+{
+  "name": "peoplepay360",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev"
+  },
+  "dependencies": {
+    "pg": "^8.23.0"
+  }
+}
