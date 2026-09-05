@@ -9,10 +9,12 @@ import { EmployeeFormPage } from './features/auth-employee/pages/EmployeeFormPag
 import { ContractListPage } from './features/auth-employee/pages/ContractListPage';
 import { SchedulePage } from './features/auth-employee/pages/SchedulePage';
 import { AttendanceListPage } from './features/attendance-timeoff/pages/AttendanceListPage';
+import { TimeOffOverviewPage } from './features/attendance-timeoff/pages/TimeOffOverviewPage';
 import { PayrollDashboardPage } from './features/dashboard-reports/pages/PayrollDashboardPage';
 import { PayrunsListPage } from './features/payroll/pages/PayrunsListPage';
 import { PayrunProcessingPage } from './features/payroll/pages/PayrunProcessingPage';
 import { SalaryStructuresPage } from './features/payroll/pages/SalaryStructuresPage';
+import { LandingPage } from './features/landing/pages/LandingPage';
 import { payrollRoutes } from './features/payroll/payroll.routes';
 
 // Protected Layout Shell
@@ -71,12 +73,20 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Dev B Module */}
+      {/* Dev B Modules */}
       <Route
         path="/attendance"
         element={
           <ProtectedLayout>
             <AttendanceListPage />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/timeoff"
+        element={
+          <ProtectedLayout>
+            <TimeOffOverviewPage />
           </ProtectedLayout>
         }
       />

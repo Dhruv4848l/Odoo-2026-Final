@@ -1,12 +1,18 @@
 import { Express } from 'express';
 import identityRoutes from './modules/identity-employee/identity.routes.js';
 import payrollRoutes from './modules/payroll-engine/payroll.routes.js';
+import attendanceRoutes from './modules/attendance-timeoff/attendance.routes.js';
+import timeoffRoutes from './modules/attendance-timeoff/timeoff.routes.js';
 
 export function registerRoutes(app: Express) {
   const API_PREFIX = '/api/v1';
 
   // Dev A — Identity & Core HR Squad
   app.use(API_PREFIX, identityRoutes);
+
+  // Dev B — Time & Presence Squad
+  app.use(`${API_PREFIX}/attendance`, attendanceRoutes);
+  app.use(`${API_PREFIX}/timeoff`, timeoffRoutes);
 
   // Dev C — Payroll Engine Squad
   app.use(`${API_PREFIX}/payroll`, payrollRoutes);
@@ -16,7 +22,7 @@ export function registerRoutes(app: Express) {
     res.json({ success: true, status: 'OK', timestamp: new Date().toISOString() });
   });
 
-  console.log('[RoutesLoader] API v1 routes mounted successfully.');
+  console.log('[RoutesLoader] API v1 routes mounted successfully including Dev A, Dev B, Dev C.');
 }
 
 export function loadRoutes(app: Express) {
