@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { memoryDb } from '../../core/db.js';
+import { query } from '../../core/db.js';
 import { authMiddleware, requireRole, AuthenticatedRequest } from '../../core/auth.js';
 
 const router = Router();
@@ -8,12 +8,12 @@ const router = Router();
 // 1. TIME OFF TYPES (Module A4 / B4)
 // ======================================================================
 
-router.get('/types', authMiddleware, (req, res) => {
-  const types = (memoryDb as any).time_off_types || [];
-  return res.json({ success: true, data: types });
+router.get('/types', authMiddleware, async (req, res) => {
+  const result = await query('SELECT * FROM time_off_types ORDER BY name');
+  return res.json({ success: true, data: result.rows || [] });
 });
 
-router.post('/types', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll_manager']), (req, res) => {
+router.post('/types', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll_manager']), async (req, res) => {
   const { name, unit, requires_allocation, approval_workflow, is_paid, display_color } = req.body;
 
   if (!name || !unit) {
@@ -23,104 +23,108 @@ router.post('/types', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_pa
     });
   }
 
-  const newType = {
-    id: `tot_${Date.now()}`,
-    name,
-    unit: unit || 'Days',
-    requires_allocation: requires_allocation !== undefined ? Boolean(requires_allocation) : true,
-    approval_workflow: approval_workflow || 'by_hr',
-    is_paid: is_paid !== undefined ? Boolean(is_paid) : true,
-    display_color: display_color || '#5B4FE9',
-  };
+  const result = await query(
+    `INSERT INTO time_off_types (name, unit, requires_allocation, approval_workflow, is_paid, display_color)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [name, unit || 'Days',
+     requires_allocation !== undefined ? Boolean(requires_allocation) : true,
+     approval_workflow || 'by_hr',
+     is_paid !== undefined ? Boolean(is_paid) : true,
+     display_color || '#5B4FE9']
+  );
 
-  if (!(memoryDb as any).time_off_types) (memoryDb as any).time_off_types = [];
-  (memoryDb as any).time_off_types.push(newType);
-
-  return res.status(201).json({ success: true, data: newType });
+  return res.status(201).json({ success: true, data: result.rows?.[0] });
 });
 
-router.put('/types/:id', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll_manager']), (req, res) => {
+router.put('/types/:id', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll_manager']), async (req, res) => {
   const { id } = req.params;
-  const list = (memoryDb as any).time_off_types || [];
-  const index = list.findIndex((t: any) => String(t.id) === String(id));
+  const { name, unit, requires_allocation, approval_workflow, is_paid, display_color } = req.body;
 
-  if (index === -1) {
+  const result = await query(
+    `UPDATE time_off_types SET
+       name = COALESCE($1, name),
+       unit = COALESCE($2, unit),
+       requires_allocation = COALESCE($3, requires_allocation),
+       approval_workflow = COALESCE($4, approval_workflow),
+       is_paid = COALESCE($5, is_paid),
+       display_color = COALESCE($6, display_color),
+       updated_at = NOW()
+     WHERE id = $7 RETURNING *`,
+    [name, unit, requires_allocation, approval_workflow, is_paid, display_color, Number(id)]
+  );
+
+  if (!result.rows || result.rows.length === 0) {
     return res.status(404).json({ success: false, error: { message: 'Time off type not found.' } });
   }
 
-  list[index] = { ...list[index], ...req.body };
-  return res.json({ success: true, data: list[index] });
+  return res.json({ success: true, data: result.rows[0] });
 });
 
 // ======================================================================
 // 2. TIME OFF ALLOCATIONS (Module A4 / B4)
 // ======================================================================
 
-router.get('/allocations', authMiddleware, (req: AuthenticatedRequest, res: Response) => {
+router.get('/allocations', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const { employee_id, time_off_type_id } = req.query;
 
-  let list = (memoryDb as any).time_off_allocations || [];
+  let sql = `
+    SELECT a.*,
+           e.first_name, e.last_name,
+           t.name AS type_name, t.display_color,
+           GREATEST(0, a.allocated - a.taken) AS remaining,
+           CASE WHEN a.valid_until < CURRENT_DATE THEN true ELSE false END AS is_expired
+    FROM time_off_allocations a
+    JOIN employees e ON a.employee_id = e.id
+    JOIN time_off_types t ON a.time_off_type_id = t.id
+  `;
+
+  const conditions: string[] = [];
+  const params: any[] = [];
 
   // Plain employee RBAC check
   if (req.user?.roleId === 'employee' && req.user.employeeId) {
-    list = list.filter((a: any) => String(a.employee_id) === String(req.user?.employeeId));
+    conditions.push(`a.employee_id = $${params.length + 1}`);
+    params.push(Number(req.user.employeeId));
   } else if (employee_id) {
-    list = list.filter((a: any) => String(a.employee_id) === String(employee_id));
+    conditions.push(`a.employee_id = $${params.length + 1}`);
+    params.push(Number(employee_id));
   }
 
   if (time_off_type_id) {
-    list = list.filter((a: any) => String(a.time_off_type_id) === String(time_off_type_id));
+    conditions.push(`a.time_off_type_id = $${params.length + 1}`);
+    params.push(Number(time_off_type_id));
   }
 
-  const nowStr = new Date().toISOString().split('T')[0];
+  if (conditions.length > 0) {
+    sql += ' WHERE ' + conditions.join(' AND ');
+  }
+  sql += ' ORDER BY a.valid_from DESC';
 
-  const enriched = list.map((alloc: any) => {
-    const employee = (memoryDb as any).employees.find((e: any) => String(e.id) === String(alloc.employee_id));
-    const type = (memoryDb as any).time_off_types.find((t: any) => String(t.id) === String(alloc.time_off_type_id));
-    const remaining = Math.max(0, Number(alloc.allocated) - Number(alloc.taken || 0));
-    const isExpired = alloc.valid_until && alloc.valid_until < nowStr;
-
-    return {
-      ...alloc,
-      employee: employee ? { id: employee.id, first_name: employee.first_name, last_name: employee.last_name } : null,
-      time_off_type: type || null,
-      remaining: isExpired ? 0 : remaining,
-      is_expired: isExpired,
-    };
-  });
-
-  return res.json({ success: true, data: enriched });
+  const result = await query(sql, params);
+  return res.json({ success: true, data: result.rows || [] });
 });
 
-router.get('/allocations/my', authMiddleware, (req: AuthenticatedRequest, res: Response) => {
+router.get('/allocations/my', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const empId = req.user?.employeeId;
   if (!empId) {
     return res.json({ success: true, data: [] });
   }
 
-  const list = ((memoryDb as any).time_off_allocations || []).filter(
-    (a: any) => String(a.employee_id) === String(empId)
-  );
+  const result = await query(`
+    SELECT a.*,
+           t.name AS type_name, t.display_color,
+           GREATEST(0, a.allocated - a.taken) AS remaining,
+           CASE WHEN a.valid_until < CURRENT_DATE THEN true ELSE false END AS is_expired
+    FROM time_off_allocations a
+    JOIN time_off_types t ON a.time_off_type_id = t.id
+    WHERE a.employee_id = $1
+    ORDER BY a.valid_from DESC
+  `, [Number(empId)]);
 
-  const nowStr = new Date().toISOString().split('T')[0];
-
-  const enriched = list.map((alloc: any) => {
-    const type = (memoryDb as any).time_off_types.find((t: any) => String(t.id) === String(alloc.time_off_type_id));
-    const remaining = Math.max(0, Number(alloc.allocated) - Number(alloc.taken || 0));
-    const isExpired = alloc.valid_until && alloc.valid_until < nowStr;
-
-    return {
-      ...alloc,
-      time_off_type: type || null,
-      remaining: isExpired ? 0 : remaining,
-      is_expired: isExpired,
-    };
-  });
-
-  return res.json({ success: true, data: enriched });
+  return res.json({ success: true, data: result.rows || [] });
 });
 
-router.post('/allocations', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll_manager']), (req, res) => {
+router.post('/allocations', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll_manager']), async (req, res) => {
   const { employee_id, time_off_type_id, allocated, valid_from, valid_until } = req.body;
 
   if (!employee_id || !time_off_type_id || !allocated || !valid_from || !valid_until) {
@@ -130,61 +134,60 @@ router.post('/allocations', authMiddleware, requireRole(['admin', 'hr_manager', 
     });
   }
 
-  const newAlloc = {
-    id: `alloc_${Date.now()}`,
-    employee_id,
-    time_off_type_id,
-    allocated: Number(allocated),
-    taken: 0,
-    valid_from,
-    valid_until,
-  };
+  const result = await query(
+    `INSERT INTO time_off_allocations (employee_id, time_off_type_id, allocated, taken, valid_from, valid_until)
+     VALUES ($1, $2, $3, 0, $4, $5) RETURNING *`,
+    [Number(employee_id), Number(time_off_type_id), Number(allocated), valid_from, valid_until]
+  );
 
-  if (!(memoryDb as any).time_off_allocations) (memoryDb as any).time_off_allocations = [];
-  (memoryDb as any).time_off_allocations.push(newAlloc);
-
-  return res.status(201).json({ success: true, data: newAlloc });
+  return res.status(201).json({ success: true, data: result.rows?.[0] });
 });
 
 // ======================================================================
 // 3. TIME OFF REQUESTS (Module A4 / B4) — Balance & Overlap Enforcement
 // ======================================================================
 
-router.get('/requests', authMiddleware, (req: AuthenticatedRequest, res: Response) => {
+router.get('/requests', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const { employee_id, status } = req.query;
 
-  let list = (memoryDb as any).time_off_requests || [];
+  let sql = `
+    SELECT r.*,
+           e.first_name, e.last_name,
+           t.name AS type_name, t.display_color,
+           ap.first_name AS approver_first_name, ap.last_name AS approver_last_name
+    FROM time_off_requests r
+    JOIN employees e ON r.employee_id = e.id
+    JOIN time_off_types t ON r.time_off_type_id = t.id
+    LEFT JOIN employees ap ON r.approved_by = ap.id
+  `;
+
+  const conditions: string[] = [];
+  const params: any[] = [];
 
   if (req.user?.roleId === 'employee' && req.user.employeeId) {
-    list = list.filter((r: any) => String(r.employee_id) === String(req.user?.employeeId));
+    conditions.push(`r.employee_id = $${params.length + 1}`);
+    params.push(Number(req.user.employeeId));
   } else if (employee_id) {
-    list = list.filter((r: any) => String(r.employee_id) === String(employee_id));
+    conditions.push(`r.employee_id = $${params.length + 1}`);
+    params.push(Number(employee_id));
   }
 
   if (status) {
-    list = list.filter((r: any) => String(r.status).toLowerCase() === String(status).toLowerCase());
+    conditions.push(`r.status = $${params.length + 1}`);
+    params.push(status);
   }
 
-  const enriched = list.map((reqItem: any) => {
-    const employee = (memoryDb as any).employees.find((e: any) => String(e.id) === String(reqItem.employee_id));
-    const type = (memoryDb as any).time_off_types.find((t: any) => String(t.id) === String(reqItem.time_off_type_id));
-    const approver = reqItem.approved_by
-      ? (memoryDb as any).employees.find((e: any) => String(e.id) === String(reqItem.approved_by))
-      : null;
+  if (conditions.length > 0) {
+    sql += ' WHERE ' + conditions.join(' AND ');
+  }
+  sql += ' ORDER BY r.created_at DESC';
 
-    return {
-      ...reqItem,
-      employee: employee ? { id: employee.id, first_name: employee.first_name, last_name: employee.last_name } : null,
-      time_off_type: type || null,
-      approved_by_user: approver ? { first_name: approver.first_name, last_name: approver.last_name } : null,
-    };
-  });
-
-  return res.json({ success: true, data: enriched });
+  const result = await query(sql, params);
+  return res.json({ success: true, data: result.rows || [] });
 });
 
-router.post('/requests', authMiddleware, (req: AuthenticatedRequest, res: Response) => {
-  const employee_id = req.user?.roleId === 'employee' && req.user.employeeId ? req.user.employeeId : req.body.employee_id;
+router.post('/requests', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const employee_id = (req.user?.roleId === 'employee' && req.user.employeeId) ? req.user.employeeId : req.body.employee_id;
   const { time_off_type_id, start_date, end_date, requested_amount } = req.body;
 
   if (!employee_id || !time_off_type_id || !start_date || !end_date || requested_amount === undefined) {
@@ -202,32 +205,26 @@ router.post('/requests', authMiddleware, (req: AuthenticatedRequest, res: Respon
     });
   }
 
-  if (new Date(end_date).getTime() < new Date(start_date).getTime()) {
-    return res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_DATE_RANGE', message: 'End date cannot be earlier than start date.' },
-    });
-  }
-
-  const type = ((memoryDb as any).time_off_types || []).find((t: any) => String(t.id) === String(time_off_type_id));
+  // Get the time off type
+  const typeRes = await query('SELECT * FROM time_off_types WHERE id = $1', [Number(time_off_type_id)]);
+  const type = typeRes.rows?.[0];
   if (!type) {
     return res.status(404).json({ success: false, error: { message: 'Time off type not found.' } });
   }
-
 
   // -------------------------------------------------------------------
   // VALIDATION 1: Insufficient Leave Balance check (if allocation required)
   // -------------------------------------------------------------------
   if (type.requires_allocation) {
-    const allocations = ((memoryDb as any).time_off_allocations || []).filter(
-      (a: any) =>
-        String(a.employee_id) === String(employee_id) &&
-        String(a.time_off_type_id) === String(time_off_type_id) &&
-        a.valid_from <= start_date &&
-        a.valid_until >= end_date
+    const balanceRes = await query(
+      `SELECT COALESCE(SUM(allocated - taken), 0)::float AS total_remaining
+       FROM time_off_allocations
+       WHERE employee_id = $1 AND time_off_type_id = $2
+         AND valid_from <= $3 AND valid_until >= $4`,
+      [Number(employee_id), Number(time_off_type_id), start_date, end_date]
     );
 
-    const totalRemaining = allocations.reduce((sum: number, a: any) => sum + (Number(a.allocated) - Number(a.taken || 0)), 0);
+    const totalRemaining = balanceRes.rows?.[0]?.total_remaining || 0;
 
     if (totalRemaining < reqAmount) {
       return res.status(400).json({
@@ -243,132 +240,101 @@ router.post('/requests', authMiddleware, (req: AuthenticatedRequest, res: Respon
   // -------------------------------------------------------------------
   // VALIDATION 2: Overlapping Leave Requests check
   // -------------------------------------------------------------------
-  const reqStart = new Date(start_date).getTime();
-  const reqEnd = new Date(end_date).getTime();
-
-  const existingActiveRequests = ((memoryDb as any).time_off_requests || []).filter(
-    (r: any) => String(r.employee_id) === String(employee_id) && r.status !== 'Refused'
+  const overlapRes = await query(
+    `SELECT id, start_date, end_date FROM time_off_requests
+     WHERE employee_id = $1 AND status != 'Refused'
+       AND start_date <= $3 AND end_date >= $2`,
+    [Number(employee_id), start_date, end_date]
   );
 
-  for (const existing of existingActiveRequests) {
-    const exStart = new Date(existing.start_date).getTime();
-    const exEnd = new Date(existing.end_date).getTime();
-
-    // Check date overlap: (StartA <= EndB) and (EndA >= StartB)
-    if (reqStart <= exEnd && reqEnd >= exStart) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'OVERLAPPING_LEAVE_REQUEST',
-          message: `Validation Error: You already have an active leave request (${existing.start_date} to ${existing.end_date}) covering these dates. Duplicate overlapping leave requests cannot be created.`,
-        },
-      });
-    }
+  if (overlapRes.rows && overlapRes.rows.length > 0) {
+    const existing = overlapRes.rows[0];
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'OVERLAPPING_LEAVE_REQUEST',
+        message: `Validation Error: You already have an active leave request (${existing.start_date} to ${existing.end_date}) covering these dates.`,
+      },
+    });
   }
 
-  const newRequest = {
-    id: `tor_${Date.now()}`,
-    employee_id,
-    time_off_type_id,
-    start_date,
-    end_date,
-    requested_amount: reqAmount,
-    status: 'Pending',
-    approved_by: null,
-    created_at: new Date().toISOString(),
-  };
+  const result = await query(
+    `INSERT INTO time_off_requests (employee_id, time_off_type_id, start_date, end_date, requested_amount, status)
+     VALUES ($1, $2, $3, $4, $5, 'Pending') RETURNING *`,
+    [Number(employee_id), Number(time_off_type_id), start_date, end_date, reqAmount]
+  );
 
-  if (!(memoryDb as any).time_off_requests) (memoryDb as any).time_off_requests = [];
-  (memoryDb as any).time_off_requests.push(newRequest);
-
-  return res.status(201).json({ success: true, data: newRequest });
+  return res.status(201).json({ success: true, data: result.rows?.[0] });
 });
 
 // ----------------------------------------------------------------------
 // POST /requests/:id/approve — Approve Request & Deduct Balance
 // ----------------------------------------------------------------------
-router.post('/requests/:id/approve', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll_manager']), (req: AuthenticatedRequest, res: Response) => {
+router.post('/requests/:id/approve', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll_manager']), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const list = (memoryDb as any).time_off_requests || [];
-  const index = list.findIndex((r: any) => String(r.id) === String(id));
 
-  if (index === -1) {
+  const reqRes = await query('SELECT * FROM time_off_requests WHERE id = $1', [Number(id)]);
+  if (!reqRes.rows || reqRes.rows.length === 0) {
     return res.status(404).json({ success: false, error: { message: 'Leave request not found.' } });
   }
 
-  const request = list[index];
-  const type = ((memoryDb as any).time_off_types || []).find((t: any) => String(t.id) === String(request.time_off_type_id));
+  const request = reqRes.rows[0];
+
+  // Get leave type to check if allocation required
+  const typeRes = await query('SELECT * FROM time_off_types WHERE id = $1', [request.time_off_type_id]);
+  const type = typeRes.rows?.[0];
 
   // Deduct from allocation if required and not already approved
   if (request.status !== 'Approved' && type?.requires_allocation) {
-    const allocations = (memoryDb as any).time_off_allocations || [];
-    let targetAlloc = allocations.find(
-      (a: any) =>
-        String(a.employee_id) === String(request.employee_id) &&
-        String(a.time_off_type_id) === String(request.time_off_type_id) &&
-        a.valid_from <= request.start_date &&
-        a.valid_until >= request.end_date
+    await query(
+      `UPDATE time_off_allocations SET taken = taken + $1, updated_at = NOW()
+       WHERE employee_id = $2 AND time_off_type_id = $3
+         AND valid_from <= $4 AND valid_until >= $5`,
+      [Number(request.requested_amount), request.employee_id, request.time_off_type_id,
+       request.start_date, request.end_date]
     );
-
-    if (!targetAlloc) {
-      targetAlloc = allocations.find(
-        (a: any) =>
-          String(a.employee_id) === String(request.employee_id) &&
-          String(a.time_off_type_id) === String(request.time_off_type_id)
-      );
-    }
-
-    if (targetAlloc) {
-      targetAlloc.taken = Number(targetAlloc.taken || 0) + Number(request.requested_amount);
-    }
-
   }
 
-  list[index] = {
-    ...request,
-    status: 'Approved',
-    approved_by: req.user?.employeeId || 'emp_admin',
-  };
+  const result = await query(
+    `UPDATE time_off_requests SET status = 'Approved', approved_by = $1, updated_at = NOW()
+     WHERE id = $2 RETURNING *`,
+    [Number(req.user?.employeeId) || null, Number(id)]
+  );
 
-  return res.json({ success: true, data: list[index] });
+  return res.json({ success: true, data: result.rows?.[0] });
 });
 
 // ----------------------------------------------------------------------
 // POST /requests/:id/refuse — Refuse Request
 // ----------------------------------------------------------------------
-router.post('/requests/:id/refuse', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll_manager']), (req: AuthenticatedRequest, res: Response) => {
+router.post('/requests/:id/refuse', authMiddleware, requireRole(['admin', 'hr_manager', 'hr_payroll_manager']), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const list = (memoryDb as any).time_off_requests || [];
-  const index = list.findIndex((r: any) => String(r.id) === String(id));
 
-  if (index === -1) {
+  const reqRes = await query('SELECT * FROM time_off_requests WHERE id = $1', [Number(id)]);
+  if (!reqRes.rows || reqRes.rows.length === 0) {
     return res.status(404).json({ success: false, error: { message: 'Leave request not found.' } });
   }
 
-  const request = list[index];
-  const type = ((memoryDb as any).time_off_types || []).find((t: any) => String(t.id) === String(request.time_off_type_id));
+  const request = reqRes.rows[0];
+  const typeRes = await query('SELECT * FROM time_off_types WHERE id = $1', [request.time_off_type_id]);
+  const type = typeRes.rows?.[0];
 
   // Revert allocation deduction if it was previously approved
   if (request.status === 'Approved' && type?.requires_allocation) {
-    const allocations = (memoryDb as any).time_off_allocations || [];
-    const targetAlloc = allocations.find(
-      (a: any) =>
-        String(a.employee_id) === String(request.employee_id) &&
-        String(a.time_off_type_id) === String(request.time_off_type_id)
+    await query(
+      `UPDATE time_off_allocations SET taken = GREATEST(0, taken - $1), updated_at = NOW()
+       WHERE employee_id = $2 AND time_off_type_id = $3`,
+      [Number(request.requested_amount), request.employee_id, request.time_off_type_id]
     );
-
-    if (targetAlloc) {
-      targetAlloc.taken = Math.max(0, Number(targetAlloc.taken || 0) - Number(request.requested_amount));
-    }
   }
 
-  list[index] = {
-    ...request,
-    status: 'Refused',
-    approved_by: req.user?.employeeId || 'emp_admin',
-  };
+  const result = await query(
+    `UPDATE time_off_requests SET status = 'Refused', approved_by = $1, updated_at = NOW()
+     WHERE id = $2 RETURNING *`,
+    [Number(req.user?.employeeId) || null, Number(id)]
+  );
 
-  return res.json({ success: true, data: list[index] });
+  return res.json({ success: true, data: result.rows?.[0] });
 });
 
 export default router;
