@@ -9,7 +9,7 @@ const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:post
 
 export const pool = new Pool({
   connectionString,
-  ssl: connectionString.includes('supabase.co') ? { rejectUnauthorized: false } : false,
+  ssl: (connectionString.includes('supabase') || connectionString.includes('pooler')) ? { rejectUnauthorized: false } : false,
 });
 
 export const query = async (text: string, params?: any[]) => {
